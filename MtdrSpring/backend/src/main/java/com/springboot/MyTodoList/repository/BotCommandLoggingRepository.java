@@ -1,17 +1,13 @@
 package com.springboot.MyTodoList.repository;
 
-
-import com.springboot.MyTodoList.model.User;
+import com.springboot.MyTodoList.model.BotCommandLogging;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import jakarta.transaction.Transactional;
-
 @Repository
 @Transactional
 @EnableTransactionManagement
-public interface UserRepository extends JpaRepository<User,Long> {
-
-
+public interface BotCommandLoggingRepository extends JpaRepository<BotCommandLogging, Long> {
 }
