@@ -14,6 +14,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import Landing from './Landing';
+import Login from './Login';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<Navigate to="/landing" replace />} />
         <Route path="/landing" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/app" element={<App />} />
       </Routes>
     </BrowserRouter>
