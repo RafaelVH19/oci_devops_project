@@ -49,11 +49,11 @@ public class UserService {
             return false;
         }
     }
-    public User updateUser(int id, User user2update){
+    public User updateUser(long id, User user2update){
         Optional<User> dbUser = userRepository.findById((long) id);
         if(dbUser.isPresent()){
             User user = dbUser.get();
-            user.setID(id);
+            user.setId(id);
             user.setName(user2update.getName());
             user.setEmail(user2update.getEmail());
             user.setTelegramId(user2update.getTelegramId());

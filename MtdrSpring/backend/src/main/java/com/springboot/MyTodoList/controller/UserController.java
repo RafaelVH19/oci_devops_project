@@ -35,13 +35,13 @@ public class UserController {
     public ResponseEntity<User> addUser(@RequestBody User newUser) throws Exception{
         User dbUser = userService.addUser(newUser);
         HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.set("location",""+dbUser.getID());
+        responseHeaders.set("location",""+dbUser.getId());
         responseHeaders.set("Access-Control-Expose-Headers","location");
-        //URI location = URI.create(""+td.getID())
 
         return ResponseEntity.ok()
                 .headers(responseHeaders).build();
     }
+    
     //@CrossOrigin
     @PutMapping(value = "updateUser/{id}")
     public ResponseEntity<User> updateUser(@RequestBody User user, @PathVariable int id){

@@ -6,8 +6,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "USERS")
@@ -36,9 +39,17 @@ public class User {
     @Column(name = "IS_ACTIVE", nullable = false)
     private Integer isActive;
 
-    @Column(name = "CREATED_AT", nullable = false)
+    @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "PASSWORD_HASH", nullable = false, length = 255)
     private String passwordHash;
 
@@ -127,29 +138,5 @@ public class User {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
-    }
-
-    public Long getID() {
-        return getId();
-    }
-
-    public void setID(long id) {
-        setId(id);
-    }
-
-    public String getPhoneNumber() {
-        return getTelegramId();
-    }
-
-    public void setPhoneNumber(String number) {
-        setTelegramId(number);
-    }
-
-    public String getUserPassword() {
-        return getPasswordHash();
-    }
-
-    public void setUserPassword(String password) {
-        setPasswordHash(password);
     }
 }
