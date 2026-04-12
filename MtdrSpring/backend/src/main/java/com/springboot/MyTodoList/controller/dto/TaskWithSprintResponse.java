@@ -1,62 +1,40 @@
-package com.springboot.MyTodoList.model;
+package com.springboot.MyTodoList.controller.dto;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.PrePersist;
+import com.springboot.MyTodoList.model.Task;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "TASKS")
-public class Task {
+public class TaskWithSprintResponse {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ID")
     private Long id;
-
-    @Column(name = "TITLE", nullable = false, length = 200)
     private String title;
-
-    @Column(name = "DESCRIPTION", length = 1000)
     private String description;
-
-    @Column(name = "STATUS", nullable = false, length = 20)
     private String status;
-
-    @Column(name = "PRIORITY", nullable = false, length = 20)
     private String priority;
-
-    @Column(name = "ASSIGNED_TO", nullable = false)
     private Long assignedTo;
-
-    @Column(name = "CREATED_BY", nullable = false)
     private Long createdBy;
-
-    @Column(name = "DUE_DATE")
     private LocalDateTime dueDate;
-
-    @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String vector;
+    private SprintSummaryResponse sprint;
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
+    public TaskWithSprintResponse() {
     }
 
-    @Column(name = "UPDATED_AT")
-    private LocalDateTime updatedAt;
-
-    @Column(name = "VECTOR", nullable = false, length = 255)
-    private String vector;
-
-    public Task() {
+    public TaskWithSprintResponse(Task task, SprintSummaryResponse sprint) {
+        this.id = task.getId();
+        this.title = task.getTitle();
+        this.description = task.getDescription();
+        this.status = task.getStatus();
+        this.priority = task.getPriority();
+        this.assignedTo = task.getAssignedTo();
+        this.createdBy = task.getCreatedBy();
+        this.dueDate = task.getDueDate();
+        this.createdAt = task.getCreatedAt();
+        this.updatedAt = task.getUpdatedAt();
+        this.vector = task.getVector();
+        this.sprint = sprint;
     }
 
     public Long getId() {
@@ -145,5 +123,13 @@ public class Task {
 
     public void setVector(String vector) {
         this.vector = vector;
+    }
+
+    public SprintSummaryResponse getSprint() {
+        return sprint;
+    }
+
+    public void setSprint(SprintSummaryResponse sprint) {
+        this.sprint = sprint;
     }
 }
