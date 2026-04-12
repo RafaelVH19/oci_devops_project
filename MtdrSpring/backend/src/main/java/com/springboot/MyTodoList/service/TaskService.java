@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,8 +42,10 @@ public class TaskService {
             current.setAssignedTo(updated.getAssignedTo());
             current.setCreatedBy(updated.getCreatedBy());
             current.setDueDate(updated.getDueDate());
-            current.setCreatedAt(updated.getCreatedAt());
-            current.setUpdatedAt(updated.getUpdatedAt());
+            if (updated.getCreatedAt() != null) {
+                current.setCreatedAt(updated.getCreatedAt());
+            }
+            current.setUpdatedAt(LocalDateTime.now());
             current.setVector(updated.getVector());
             return taskRepository.save(current);
         }

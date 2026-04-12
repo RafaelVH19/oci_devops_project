@@ -26,8 +26,8 @@ public class TaskWithSprintResponse {
         this.id = task.getId();
         this.title = task.getTitle();
         this.description = task.getDescription();
-        this.status = task.getStatus();
-        this.priority = task.getPriority();
+        this.status = task.getStatus() != null ? task.getStatus().name() : null;
+        this.priority = task.getPriority() != null ? task.getPriority().name() : null;
         this.assignedTo = task.getAssignedTo();
         this.createdBy = task.getCreatedBy();
         this.dueDate = task.getDueDate();
