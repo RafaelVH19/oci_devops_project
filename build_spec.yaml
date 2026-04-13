@@ -1,4 +1,4 @@
-version: 0.1 
+version: 0.2 
 component: build
 timeoutInSeconds: 600
 shell: bash
