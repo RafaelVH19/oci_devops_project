@@ -2,7 +2,10 @@ package com.springboot.MyTodoList.controller;
 
 import com.springboot.MyTodoList.config.BotProps;
 import com.springboot.MyTodoList.service.DeepSeekService;
-import com.springboot.MyTodoList.service.ToDoItemService;
+import com.springboot.MyTodoList.service.SprintService;
+import com.springboot.MyTodoList.service.SprintTaskService;
+import com.springboot.MyTodoList.service.TaskService;
+import com.springboot.MyTodoList.service.UserService;
 import com.springboot.MyTodoList.util.BotActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,11 +24,15 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 public class ToDoItemBotController  implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
 	private static final Logger logger = LoggerFactory.getLogger(ToDoItemBotController.class);
-	private ToDoItemService toDoItemService;
 	private DeepSeekService deepSeekService;
 	private final TelegramClient telegramClient;
 	
 	private final BotProps botProps;
+
+	private TaskService taskService;
+    private SprintService sprintService;
+    private SprintTaskService sprintTaskService;
+    private UserService userService;
 
 	@Value("${telegram.bot.token}")
 	private String telegramBotToken;
@@ -41,10 +48,13 @@ public class ToDoItemBotController  implements SpringLongPollingBot, LongPolling
     }
 
 
-	public ToDoItemBotController( BotProps bp, ToDoItemService tsvc, DeepSeekService ds) {
+	public ToDoItemBotController( BotProps bp, TaskService ts, SprintService ss, SprintTaskService sts, UserService us, DeepSeekService ds) {
 		this.botProps = bp;
 		telegramClient = new OkHttpTelegramClient(getBotToken());
-		toDoItemService = tsvc;
+		taskService = ts;
+		sprintService = ss;
+		sprintTaskService = sts;
+		userService = us;
 		deepSeekService = ds;
 	}
 
@@ -62,25 +72,23 @@ public class ToDoItemBotController  implements SpringLongPollingBot, LongPolling
 
 		String messageTextFromTelegram = update.getMessage().getText();
 		long chatId = update.getMessage().getChatId();
+		Long telegramUserId = update.getMessage().getFrom().getId();
 
-		BotActions actions =  new BotActions(telegramClient,toDoItemService,deepSeekService);
+		logger.info("Mensaje recibido: " + messageTextFromTelegram);
+
+		BotActions actions =  new BotActions(telegramClient, taskService, sprintService, sprintTaskService, userService, deepSeekService);
 		actions.setRequestText(messageTextFromTelegram);
 		actions.setChatId(chatId);
-		if(actions.getTodoService()==null){
-			logger.info("todosvc error");
-			actions.setTodoService(toDoItemService);
-		}
-
+		actions.setTelegramUserId(telegramUserId);
 
 		actions.fnStart();
-		actions.fnDone();
-		actions.fnUndo();
-		actions.fnDelete();
-		actions.fnHide();
-		actions.fnListAll();
-		actions.fnAddItem();
-		actions.fnLLM();
-		actions.fnElse();
+        actions.fnRegister();
+        actions.fnAddTask();
+        actions.fnAssignTask();
+        actions.fnCompleteTask();
+        actions.fnListTasks();
+        actions.fnLLM();   
+        actions.fnElse();
 
 	}
 

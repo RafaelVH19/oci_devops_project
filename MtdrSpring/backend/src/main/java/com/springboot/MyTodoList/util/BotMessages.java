@@ -2,15 +2,28 @@ package com.springboot.MyTodoList.util;
 
 public enum BotMessages {
 	
-	HELLO_MYTODO_BOT(
-	"Hello! I'm MyTodoList Bot!\nType a new todo item below and press the send button (blue arrow), or select an option below:"),
-	BOT_REGISTERED_STARTED("Bot registered and started succesfully!"),
-	ITEM_DONE("Item done! Select /todolist to return to the list of todo items, or /start to go to the main screen."), 
-	ITEM_UNDONE("Item undone! Select /todolist to return to the list of todo items, or /start to go to the main screen."), 
-	ITEM_DELETED("Item deleted! Select /todolist to return to the list of todo items, or /start to go to the main screen."),
-	TYPE_NEW_TODO_ITEM("Type a new todo item below and press the send button (blue arrow) on the rigth-hand side."),
-	NEW_ITEM_ADDED("New item added! Select /todolist to return to the list of todo items, or /start to go to the main screen."),
-	BYE("Bye! Select /start to resume!");
+	WELCOME(
+	"Hola! Soy MyTodoList Bot!\n Ingrese alguno de los comandos disponibles: \n /register - para validar el usuario \n /addtask - para agregar una tarea a la lista \n /assigntask - para asignar una tarea a un sprint \n /completetask - para marcar una tarea como completada \n /mytasks - para ver todas las tareas"),
+	USER_OK("Usuario reconocido, bienvenido"),
+	USER_NOT_FOUND("Usuario no encontrado."),
+
+	TASK_CREATED("Tarea creada exitosamente!"),
+	TASK_ERROR("Error al crear la tarea. Asegúrate de usar el formato correcto: /addtask <título> | <descripción> | <horas> | <prioridad> (LOW, MEDIUM, HIGH)> | <ID de Usuario> "),
+	TASK_MAX_HOURS("La tarea no puede tener más de 4 horas. Porfavor subdivide esta tarea en tareas más pequeñas."),
+
+	TASK_ASSIGNED("Tarea asignada al sprint exitosamente!"),
+	TASK_ASSIGN_ERROR("Error al asignar la tarea. Asegúrate de usar el formato correcto: /assigntask <Numero de tarea> | <Numero de sprint>"),
+
+	TASK_COMPLETED("Tarea marcada como completada!"),
+	TASK_COMPLETE_ERROR("Error al completar la tarea. Asegúrate de usar el formato correcto: /completetask <Numero de tarea> | <horas> "),
+
+	TASK_NOT_FOUND("Tarea no encontrada."),
+
+	TASK_LIST_HEADER("Tus tareas:"),
+
+	UNKNOWN_COMMAND("Comando desconocido. Por favor, ingresa un comando válido."),
+
+	LLM_RESPONSE("Respuesta de la IA: ");
 
 	private String message;
 
