@@ -1,5 +1,6 @@
 package com.springboot.MyTodoList.util;
 
+import com.springboot.MyTodoList.agent.AgentOrchestrator;
 import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.SprintTask;
 import com.springboot.MyTodoList.model.SprintTaskId;
@@ -38,14 +39,16 @@ public class BotActions{
     SprintTaskService sprintTaskService;
     UserService userService;
     DeepSeekService deepSeekService;
+    AgentOrchestrator agentOrchestrator;
 
-    public BotActions(TelegramClient tc,TaskService ts, SprintService ss, SprintTaskService sts, UserService us, DeepSeekService ds){
+    public BotActions(TelegramClient tc, TaskService ts, SprintService ss, SprintTaskService sts, UserService us, DeepSeekService ds, AgentOrchestrator ao) {
         telegramClient = tc;
         taskService = ts;
         sprintService = ss;
         sprintTaskService = sts;
         userService = us;
         deepSeekService = ds;
+        agentOrchestrator = ao;
         exit  = false;
     }
 
@@ -318,9 +321,17 @@ public class BotActions{
     public void fnElse() {
         if (exit) return;
 
-        BotHelper.sendMessageToTelegram(chatId,
-                BotMessages.UNKNOWN_COMMAND.getMessage(),
-                telegramClient);
+        try {
+            String response = agentOrchestrator.handleMessage(requestText);
+            if (response != null && !response.isBlank()) {
+                BotHelper.sendMessageToTelegram(chatId, response, telegramClient);
+            }
+        } catch (Exception e) {
+            logger.error("Error con el agente de IA", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.UNKNOWN_COMMAND.getMessage(),
+                    telegramClient);
+        }
     }
 
 }
