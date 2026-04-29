@@ -8,6 +8,5 @@ public enum IntentType {
     CREATE_TASK,
     CURRENT_SPRINT_SUMMARY,
     TEAM_LOAD_SUMMARY,
-    GUACAMOLE,
     UNKNOWN
 }

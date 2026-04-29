@@ -44,7 +44,7 @@ public class LlmIntentParser implements IntentParser {
                 return parsedIntent;
             }
 
-            if (parsedIntent.getIntent() == IntentType.UNKNOWN || parsedIntent.getIntent() == IntentType.GUACAMOLE) {
+            if (parsedIntent.getIntent() == IntentType.UNKNOWN) {
                 String responseText = requestGeneralResponse(messageText);
                 if (responseText != null && !responseText.isBlank()) {
                     parsedIntent.setResponseText(responseText);
@@ -73,7 +73,6 @@ public class LlmIntentParser implements IntentParser {
             + "CREATE_TASK\n"
             + "CURRENT_SPRINT_SUMMARY\n"
             + "TEAM_LOAD_SUMMARY\n"
-            + "GUACAMOLE\n"
             + "UNKNOWN\n\n"
             + "Devuelve JSON con:\n"
             + "intent, assignee, status, title, storyPoints, sprintName, clarificationNeeded, clarificationQuestion.\n"

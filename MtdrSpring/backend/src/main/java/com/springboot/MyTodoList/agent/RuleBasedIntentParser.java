@@ -55,10 +55,7 @@ public class RuleBasedIntentParser implements IntentParser {
             return intent;
         }
 
-        if (normalized.contains("hace") && normalized.contains("guacamole")) {
-            intent.setIntent(IntentType.GUACAMOLE);
-            return intent;
-        }
+        
 
         Matcher matcher = CREATE_TASK_PATTERN.matcher(text);
         if (matcher.find()) {

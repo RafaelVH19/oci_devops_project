@@ -45,8 +45,6 @@ public class AgentOrchestrator {
                 return sprintSummary();
             case TEAM_LOAD_SUMMARY:
                 return teamLoadSummary();
-            case GUACAMOLE:
-                return "";
             default:
                 return "No pude interpretar la solicitud. Escribe ayuda para ver ejemplos.";
         }
