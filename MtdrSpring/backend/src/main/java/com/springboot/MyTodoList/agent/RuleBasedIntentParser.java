@@ -71,7 +71,7 @@ public class RuleBasedIntentParser implements IntentParser {
 
         intent.setIntent(IntentType.UNKNOWN);
         intent.setClarificationNeeded(true);
-        intent.setClarificationQuestion("No entendi la solicitud. Prueba con ayuda, consulta de tareas o resumen del sprint.");
+        intent.setClarificationQuestion("No entendí la solicitud. Prueba con ayuda, consulta de tareas o resumen del sprint.");
         return intent;
     }
 

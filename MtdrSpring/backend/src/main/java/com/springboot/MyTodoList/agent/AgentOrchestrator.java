@@ -110,7 +110,7 @@ public class AgentOrchestrator {
 
     private String formatTasks(String title, List<TaskItem> tasks) {
         if (tasks.isEmpty()) {
-            return title + "\nNo encontre tareas para ese criterio.";
+            return title + "\nNo encontré tareas para ese criterio.";
         }
 
         StringJoiner joiner = new StringJoiner("\n", title + "\n", "");

@@ -54,7 +54,7 @@ public class LlmIntentParser implements IntentParser {
 
             return parsedIntent;
         } catch (Exception ex) {
-            logger.warn("Fallo el parser LLM. Uso fallback local.", ex);
+            logger.warn("Falló el parser LLM. Uso fallback local.", ex);
             return fallbackParser.parse(messageText);
         }
     }
