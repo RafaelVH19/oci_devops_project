@@ -76,7 +76,8 @@ public class LlmIntentParser implements IntentParser {
             + "UNKNOWN\n\n"
             + "Devuelve JSON con:\n"
             + "intent, assignee, status, title, storyPoints, sprintName, clarificationNeeded, clarificationQuestion.\n"
-            + "Si falta informacion importante, pide aclaracion.";
+            + "Si falta informacion importante, pide aclaracion.\n"
+            + "Si el usuario pregunta por como usar comandos, formatos o ejemplos (por ejemplo: como agrego una tarea), usa intent UNKNOWN y no pidas aclaracion.";
 
         Map<String, Object> systemMsg = new HashMap<>();
         systemMsg.put("role", "system");
@@ -121,7 +122,14 @@ public class LlmIntentParser implements IntentParser {
         String systemPrompt = "Eres un asistente general en espanol.\n"
             + "Responde de forma breve, clara y util a cualquier pregunta del usuario.\n"
             + "No uses bloques de codigo ni texto extra.\n"
-            + "Si hace falta, da pasos concretos.";
+            + "Si hace falta, da pasos concretos.\n"
+            + "Si la pregunta es sobre como usar el bot o como ejecutar acciones, responde con el formato exacto de comandos disponibles:\n"
+            + "/register - validar usuario\n"
+            + "/addtask \"<titulo>\" | \"<descripcion>\" | <horas> | <prioridad (LOW, MEDIUM, HIGH)> | <ID de Usuario>\n"
+            + "/assigntask <Numero de tarea> | <Numero de sprint>\n"
+            + "/completetask <Numero de tarea> | <horas>\n"
+            + "/mytasks - listar tareas\n"
+            + "Cuando el usuario pregunte algo como 'Como agrego una tarea?', prioriza explicar /addtask con un ejemplo completo.";
 
         Map<String, Object> systemMsg = new HashMap<>();
         systemMsg.put("role", "system");

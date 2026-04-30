@@ -132,9 +132,16 @@ public class BotActions{
         try {
             String[] parts = requestText.replace("/addtask", "").trim().split("\\|");
 
+            if (parts.length < 5) {
+                throw new IllegalArgumentException("Formato incompleto para /addtask");
+            }
+
             for (int i = 0; i < parts.length; i++) {
                 parts[i] = parts[i].trim();
             }
+
+            String title = extractQuotedValue(parts[0]);
+            String description = extractQuotedValue(parts[1]);
 
             int horas = Integer.parseInt(parts[2]);
 
@@ -157,8 +164,8 @@ public class BotActions{
             }
 
             Task task = new Task();
-            task.setTitle(parts[0]);
-            task.setDescription(parts[1]);
+            task.setTitle(title);
+            task.setDescription(description);
             task.setPriority(TaskPriority.valueOf(parts[3]));
             task.setAssignedTo(Long.parseLong(parts[4]));
             task.setCreatedBy(user.getId());
@@ -182,6 +189,24 @@ public class BotActions{
         }
 
         exit = true;
+    }
+
+    private String extractQuotedValue(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Valor nulo");
+        }
+
+        String trimmed = value.trim();
+        if (trimmed.length() < 2 || !trimmed.startsWith("\"") || !trimmed.endsWith("\"")) {
+            throw new IllegalArgumentException("El titulo y la descripcion deben estar entre comillas dobles");
+        }
+
+        String unquoted = trimmed.substring(1, trimmed.length() - 1).trim();
+        if (unquoted.isEmpty()) {
+            throw new IllegalArgumentException("Valor vacio");
+        }
+
+        return unquoted;
     }
 
     public void fnAssignTask() {
@@ -259,6 +284,7 @@ public class BotActions{
             }
 
             task.setStatus(TaskStatus.DONE);
+            task.setHoursDone(horas);
             taskService.update(taskId, task);
 
             logger.info("Task completada");
@@ -281,15 +307,31 @@ public class BotActions{
     public void fnListTasks() {
         if (!requestText.startsWith(BotCommands.LIST_TASKS.getCommand()) || exit) return;
 
+        User user = findUserByTelegramId(String.valueOf(telegramUserId));
+        if (user == null) {
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.USER_NOT_FOUND.getMessage(),
+                    telegramClient);
+            exit = true;
+            return;
+        }
+
         List<Task> tasks = taskService.findAll();
+        List<Task> assignedTasks = tasks.stream()
+                .filter(t -> user.getId() != null && user.getId().equals(t.getAssignedTo()))
+                .collect(Collectors.toList());
 
         String msg = BotMessages.TASK_LIST_HEADER.getMessage();
 
-        for (Task t : tasks) {
+        for (Task t : assignedTasks) {
             msg += "ID: " + t.getId()
                     + " | " + t.getTitle()
                     + " | " + t.getStatus()
                     + "\n";
+        }
+
+        if (assignedTasks.isEmpty()) {
+            msg += "\nNo tienes tareas asignadas.";
         }
 
         BotHelper.sendMessageToTelegram(chatId, msg, telegramClient);

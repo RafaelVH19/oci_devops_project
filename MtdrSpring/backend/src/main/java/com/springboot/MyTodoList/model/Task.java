@@ -57,6 +57,9 @@ public class Task {
     @Column(name = "VECTOR", nullable = false, length = 255)
     private String vector;
 
+    @Column(name = "HOURS_DONE")
+    private Integer hoursDone;
+
     public Task() {
     }
 
@@ -164,5 +167,13 @@ public class Task {
 
     public void setVector(String vector) {
         this.vector = vector;
+    }
+
+    public Integer getHoursDone() {
+        return hoursDone;
+    }
+
+    public void setHoursDone(Integer hoursDone) {
+        this.hoursDone = hoursDone;
     }
 }

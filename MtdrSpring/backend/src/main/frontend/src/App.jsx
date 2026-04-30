@@ -144,7 +144,7 @@ function App() {
       <div className="container mx-auto px-5 py-12 md:py-20">
         <div className="mx-auto max-w-4xl rounded-2xl bg-white shadow-xl ring-1 ring-gray-100">
           <div className="border-b border-gray-100 px-6 py-6 sm:px-8">
-            <h1 className="title-font text-3xl font-semibold text-gray-900 sm:text-4xl">Sprint 1</h1>
+            <h1 className="title-font text-3xl font-semibold text-gray-900 sm:text-4xl">Sprint 2</h1>
             <p className="mt-2 text-sm leading-relaxed text-gray-500">Maneja tus tareas cada dia</p>
           </div>
 

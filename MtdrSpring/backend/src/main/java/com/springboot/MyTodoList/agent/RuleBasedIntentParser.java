@@ -68,7 +68,10 @@ public class RuleBasedIntentParser implements IntentParser {
 
         intent.setIntent(IntentType.UNKNOWN);
         intent.setClarificationNeeded(true);
-        intent.setClarificationQuestion("No entendí la solicitud. Prueba con ayuda, consulta de tareas o resumen del sprint.");
+        intent.setClarificationQuestion(
+            "No entendi la solicitud. Tambien puedo explicar formatos de comandos.\n"
+                + "Ejemplo para crear tarea: /addtask \"<titulo>\" | \"<descripcion>\" | <horas> | <prioridad (LOW, MEDIUM, HIGH)> | <ID de Usuario>"
+        );
         return intent;
     }
 
