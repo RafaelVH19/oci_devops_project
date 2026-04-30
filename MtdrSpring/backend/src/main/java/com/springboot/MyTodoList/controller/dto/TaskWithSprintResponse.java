@@ -17,6 +17,7 @@ public class TaskWithSprintResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String vector;
+    private Integer hoursDone;
     private SprintSummaryResponse sprint;
 
     public TaskWithSprintResponse() {
@@ -34,7 +35,16 @@ public class TaskWithSprintResponse {
         this.createdAt = task.getCreatedAt();
         this.updatedAt = task.getUpdatedAt();
         this.vector = task.getVector();
+        this.hoursDone = task.getHoursDone();
         this.sprint = sprint;
+    }
+
+    public Integer getHoursDone() {
+        return hoursDone;
+    }
+
+    public void setHoursDone(Integer hoursDone) {
+        this.hoursDone = hoursDone;
     }
 
     public Long getId() {

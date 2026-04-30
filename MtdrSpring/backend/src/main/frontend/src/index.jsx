@@ -15,6 +15,7 @@ import './index.css';
 import App from './App';
 import Landing from './Landing';
 import Login from './Login';
+import Manager from './Manager';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/landing" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/app" element={<App />} />
+        <Route path="/manager" element={<Manager />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
