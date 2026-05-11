@@ -126,11 +126,13 @@ public class AgentOrchestrator {
     }
 
     private String helpText() {
-        return "Puedo ayudarte con consultas y acciones del proyecto.\n\n"
+        return "Puedo ayudarte con consultas y acciones del proyecto, incluso en lenguaje natural.\n\n"
             + "Ejemplos:\n"
             + "- que tareas tiene ana\n"
             + "- que tareas siguen pendientes\n"
-            + "- crea una tarea para revisar la api y asignala a luis con 5 puntos\n"
+            + "- crea una tarea llamada revisar la api con descripcion validar contratos asignada a luis de prioridad alta con 4 horas\n"
+            + "- asigna la tarea 12 al sprint 3\n"
+            + "- completa la tarea revisar la api con 3 horas\n"
             + "- como va el sprint actual\n"
             + "- quien tiene mas carga";
     }

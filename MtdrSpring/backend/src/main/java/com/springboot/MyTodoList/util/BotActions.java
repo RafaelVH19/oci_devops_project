@@ -17,6 +17,7 @@ import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -163,11 +164,21 @@ public class BotActions{
                 return;
             }
 
+            Long assignedUserId = resolveUserId(parts[4], false);
+
+            if (assignedUserId == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.USER_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
             Task task = new Task();
             task.setTitle(title);
             task.setDescription(description);
-            task.setPriority(TaskPriority.valueOf(parts[3]));
-            task.setAssignedTo(Long.parseLong(parts[4]));
+            task.setPriority(parsePriority(parts[3]));
+            task.setAssignedTo(assignedUserId);
             task.setCreatedBy(user.getId());
             task.setStatus(TaskStatus.PENDING);
             task.setVector("TELEGRAM");
@@ -219,8 +230,16 @@ public class BotActions{
                 parts[i] = parts[i].trim();
             }
 
-            Long taskId = Long.parseLong(parts[0]);
-            Long sprintId = Long.parseLong(parts[1]);
+            Long taskId = resolveTaskId(parts[0]);
+            Long sprintId = resolveSprintId(parts[1]);
+
+            if (taskId == null || sprintId == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_ASSIGN_ERROR.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
 
             Task task = taskService.getById(taskId).getBody();
 
@@ -270,7 +289,15 @@ public class BotActions{
                 parts[i] = parts[i].trim();
             }
 
-            Long taskId = Long.parseLong(parts[0]);
+            Long taskId = resolveTaskId(parts[0]);
+            if (taskId == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
             int horas = Integer.parseInt(parts[1]);
 
             Task task = taskService.getById(taskId).getBody();
@@ -360,12 +387,38 @@ public class BotActions{
         exit = true;
     }
 
+    private TaskPriority parsePriority(String value) {
+        if (value == null || value.isBlank()) {
+            return TaskPriority.MEDIUM;
+        }
+
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        switch (normalized) {
+            case "LOW":
+            case "BAJA":
+                return TaskPriority.LOW;
+            case "HIGH":
+            case "ALTA":
+                return TaskPriority.HIGH;
+            case "MEDIUM":
+            case "MEDIA":
+            default:
+                return TaskPriority.MEDIUM;
+        }
+    }
+
     public void fnElse() {
         if (exit) return;
 
         try {
             String response = agentOrchestrator.handleMessage(requestText);
             if (response != null && !response.isBlank()) {
+                if (isCommandLike(response)) {
+                    if (dispatchDerivedCommand(response.trim())) {
+                        return;
+                    }
+                }
+
                 BotHelper.sendMessageToTelegram(chatId, response, telegramClient);
             }
         } catch (Exception e) {
@@ -374,6 +427,109 @@ public class BotActions{
                     BotMessages.UNKNOWN_COMMAND.getMessage(),
                     telegramClient);
         }
+    }
+
+    private boolean dispatchDerivedCommand(String derivedCommand) {
+        String previousRequestText = requestText;
+        boolean previousExit = exit;
+
+        requestText = derivedCommand;
+        exit = false;
+
+        fnStart();
+        fnRegister();
+        fnAddTask();
+        fnAssignTask();
+        fnCompleteTask();
+        fnListTasks();
+        fnLLM();
+
+        boolean handled = exit;
+        if (!handled) {
+            requestText = previousRequestText;
+            exit = previousExit;
+        }
+
+        return handled;
+    }
+
+    private boolean isCommandLike(String response) {
+        String trimmed = response == null ? "" : response.trim();
+        return trimmed.startsWith("/") && trimmed.matches("^/[a-zA-Z]+.*");
+    }
+
+    private Long resolveUserId(String value, boolean allowCurrentUserFallback) {
+        if (value == null || value.isBlank()) {
+            return allowCurrentUserFallback ? resolveCurrentUserId() : null;
+        }
+
+        String trimmed = value.trim();
+        try {
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException ignored) {
+            // Fall through to name lookup.
+        }
+
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
+        for (User user : userService.findAll()) {
+            String name = user.getName();
+            if (name != null && name.toLowerCase(Locale.ROOT).contains(normalized)) {
+                return user.getId();
+            }
+        }
+
+        return allowCurrentUserFallback ? resolveCurrentUserId() : null;
+    }
+
+    private Long resolveTaskId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        try {
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException ignored) {
+            // Fall through to title lookup.
+        }
+
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
+        for (Task task : taskService.findAll()) {
+            String title = task.getTitle();
+            if (title != null && title.toLowerCase(Locale.ROOT).contains(normalized)) {
+                return task.getId();
+            }
+        }
+
+        return null;
+    }
+
+    private Long resolveSprintId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        try {
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException ignored) {
+            // Fall through to name lookup.
+        }
+
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
+        for (Sprint sprint : sprintService.findAll()) {
+            String name = sprint.getName();
+            if (name != null && name.toLowerCase(Locale.ROOT).contains(normalized)) {
+                return sprint.getId();
+            }
+        }
+
+        return null;
+    }
+
+    private Long resolveCurrentUserId() {
+        User user = findUserByTelegramId(String.valueOf(telegramUserId));
+        return user != null ? user.getId() : null;
     }
 
 }
