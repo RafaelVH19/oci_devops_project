@@ -93,6 +93,7 @@ class BotActionsTest {
         botActions.setTelegramUserId(TELEGRAM_ID_DEVELOPER);
     }
 
+    @Test
     void fnStartSendsWelcomeMessage() throws Exception {
         botActions.setRequestText(BotCommands.START_COMMAND.getCommand());
 
