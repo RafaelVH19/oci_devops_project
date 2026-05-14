@@ -345,44 +345,33 @@ class BotActionsTest {
 
     @Test
     void fnTeamTasksShowsAllTeamTasks() throws Exception {
-        // Manager with ID 7
+
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
         manager.setRole("MANAGER");
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
-        
-        // Team members (2, 6, 22, 23)
         User dev2 = userWithTelegramId(2L, 222222L, "DEVELOPER");
         User dev6 = userWithTelegramId(6L, 333333L, "DEVELOPER");
         User dev22 = userWithTelegramId(22L, 444444L, "DEVELOPER");
         User dev23 = userWithTelegramId(23L, 555555L, "DEVELOPER");
         
-        // Team 1 with manager 7
         Team team = teamWithIdAndManager(1L, "Team A", 7L);
-        
-        // Team members
         TeamMember tm1 = new TeamMember();
         tm1.setTeamId(1L);
         tm1.setMemberUserId(2L);
-        
         TeamMember tm2 = new TeamMember();
         tm2.setTeamId(1L);
         tm2.setMemberUserId(6L);
-        
         TeamMember tm3 = new TeamMember();
         tm3.setTeamId(1L);
         tm3.setMemberUserId(22L);
-        
         TeamMember tm4 = new TeamMember();
         tm4.setTeamId(1L);
         tm4.setMemberUserId(23L);
-        
-        // Tasks for team members
+
         Task task1 = taskWithIdAndAssignment(1L, "Task for Dev 2", 2L, TaskStatus.IN_PROGRESS);
         task1.setPriority(TaskPriority.HIGH);
-        
         Task task2 = taskWithIdAndAssignment(2L, "Task for Dev 6", 6L, TaskStatus.PENDING);
         task2.setPriority(TaskPriority.MEDIUM);
-        
         Task task3 = taskWithIdAndAssignment(3L, "Task for Dev 22", 22L, TaskStatus.DONE);
         task3.setPriority(TaskPriority.LOW);
         
