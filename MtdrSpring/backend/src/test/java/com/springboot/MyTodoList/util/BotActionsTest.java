@@ -276,18 +276,15 @@ class BotActionsTest {
 
     @Test
     void fnTeamKpisShowsDeveloperKpis() throws Exception {
-        // Manager with ID 7
+
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
         manager.setRole("MANAGER");
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
-        
-        // Developer with ID 2
+
         User developer = userWithTelegramId(2L, 111111L, "DEVELOPER");
-        
-        // Team 1 with manager 7
+
         Team team = teamWithIdAndManager(1L, "Team A", 7L);
         
-        // Team member relationship
         TeamMember teamMember = new TeamMember();
         teamMember.setTeamId(1L);
         teamMember.setMemberUserId(2L);
