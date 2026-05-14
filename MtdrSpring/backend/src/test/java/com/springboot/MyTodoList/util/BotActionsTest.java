@@ -321,11 +321,9 @@ class BotActionsTest {
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
         
         User developer = userWithTelegramId(2L, 111111L, "Developer");
-        
-        // Team with manager 7 but different members
+
         Team team = teamWithIdAndManager(1L, "Team A", 7L);
-        
-        // Team member with different developer
+
         TeamMember teamMember = new TeamMember();
         teamMember.setTeamId(1L);
         teamMember.setMemberUserId(99L);
@@ -414,7 +412,6 @@ class BotActionsTest {
         manager.setRole("MANAGER");
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
         
-        // Team with manager 7 but no members with tasks
         Team team = teamWithIdAndManager(1L, "Team A", 7L);
         
         when(userService.findAll()).thenReturn(List.of(manager));
