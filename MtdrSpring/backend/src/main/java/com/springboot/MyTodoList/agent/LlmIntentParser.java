@@ -194,6 +194,8 @@ public class LlmIntentParser implements IntentParser {
             + "- /assigntask <ID o titulo de tarea> | <ID o nombre de sprint>: asigna una tarea a un sprint y la mueve a IN_PROGRESS.\n"
             + "- /completetask <ID o titulo de tarea> | <horas>: marca la tarea como DONE y guarda las horas trabajadas.\n"
             + "- /mytasks: lista las tareas asignadas al usuario Telegram actual.\n"
+            + "- /teamkpis <ID o nombre de desarrollador>: muestra los KPIs de un desarrollador (solo para gerentes).\n"
+            + "- /teamtasks: muestra todas las tareas del equipo del gerente (solo para gerentes).\n"
             + "- /llm <pregunta>: envia una pregunta libre al modelo de IA.\n"
             + "- GET /tasks, POST /tasks, PUT /tasks/{id}, DELETE /tasks/{id}: CRUD de tareas del backend.\n"
             + "- GET /sprints, POST /sprints, PUT /sprints/{id}, DELETE /sprints/{id}: CRUD de sprints.\n"

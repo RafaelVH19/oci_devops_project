@@ -5,6 +5,8 @@ import com.springboot.MyTodoList.model.Sprint;
 import com.springboot.MyTodoList.model.SprintTask;
 import com.springboot.MyTodoList.model.SprintTaskId;
 import com.springboot.MyTodoList.model.Task;
+import com.springboot.MyTodoList.model.Team;
+import com.springboot.MyTodoList.model.TeamMember;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.model.enums.TaskPriority;
 import com.springboot.MyTodoList.model.enums.TaskStatus;
@@ -12,6 +14,8 @@ import com.springboot.MyTodoList.service.TaskService;
 import com.springboot.MyTodoList.service.SprintService;
 import com.springboot.MyTodoList.service.SprintTaskService;
 import com.springboot.MyTodoList.service.UserService;
+import com.springboot.MyTodoList.service.TeamService;
+import com.springboot.MyTodoList.service.TeamMemberService;
 import com.springboot.MyTodoList.service.DeepSeekService;
 import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
@@ -39,15 +43,21 @@ public class BotActions{
     SprintService sprintService;
     SprintTaskService sprintTaskService;
     UserService userService;
+    TeamService teamService;
+    TeamMemberService teamMemberService;
     DeepSeekService deepSeekService;
     AgentOrchestrator agentOrchestrator;
 
-    public BotActions(TelegramClient tc, TaskService ts, SprintService ss, SprintTaskService sts, UserService us, DeepSeekService ds, AgentOrchestrator ao) {
+    public BotActions(TelegramClient tc, TaskService ts, SprintService ss, SprintTaskService sts, UserService us, TeamService tms, TeamMemberService tmms, DeepSeekService ds, AgentOrchestrator ao) {
         telegramClient = tc;
         taskService = ts;
         sprintService = ss;
         sprintTaskService = sts;
         userService = us;
+        teamService = tms;
+        teamMemberService = tmms;
+        deepSeekService = ds;
+        agentOrchestrator = ao;
         deepSeekService = ds;
         agentOrchestrator = ao;
         exit  = false;
@@ -87,6 +97,19 @@ public class BotActions{
             }
         }
 
+        return null;
+    }
+
+    private User findUserById(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        List<User> users = userService.findAll();
+        for (User u : users) {
+            if (u.getId() != null && u.getId().equals(userId)) {
+                return u;
+            }
+        }
         return null;
     }
 
@@ -366,6 +389,231 @@ public class BotActions{
         exit = true;
     }
 
+    public void fnTeamKpis() {
+        if (!requestText.startsWith(BotCommands.TEAM_KPIS.getCommand()) || exit) return;
+
+        try {
+            User manager = findUserByTelegramId(String.valueOf(telegramUserId));
+            if (manager == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.USER_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.MANAGER_ONLY.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            String[] parts = requestText.replace("/teamkpis", "").trim().split("\\|");
+            if (parts.length < 1 || parts[0].trim().isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "Error: /teamkpis <ID o nombre de desarrollador>",
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            Long developerId = resolveUserId(parts[0], false);
+            if (developerId == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.USER_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            List<Team> managerTeams = teamService.findAll().stream()
+                    .filter(t -> manager.getId() != null && manager.getId().equals(t.getManagerId()))
+                    .collect(Collectors.toList());
+
+            boolean developerInTeam = false;
+            for (Team team : managerTeams) {
+                List<TeamMember> members = teamMemberService.findAll().stream()
+                        .filter(tm -> team.getId().equals(tm.getTeamId()) && developerId.equals(tm.getMemberUserId()))
+                        .collect(Collectors.toList());
+                if (!members.isEmpty()) {
+                    developerInTeam = true;
+                    break;
+                }
+            }
+
+            if (!developerInTeam) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.DEVELOPER_NOT_IN_TEAM.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            User developer = findUserById(developerId);
+            if (developer == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.USER_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            List<Task> allTasks = taskService.findAll();
+            List<Task> developerTasks = allTasks.stream()
+                    .filter(t -> developerId.equals(t.getAssignedTo()))
+                    .collect(Collectors.toList());
+
+            long completedTasks = developerTasks.stream()
+                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()))
+                    .count();
+
+            int totalHoursDone = developerTasks.stream()
+                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && t.getHoursDone() != null)
+                    .mapToInt(Task::getHoursDone)
+                    .sum();
+
+            double avgHoursPerTask = completedTasks > 0
+                    ? (double) totalHoursDone / completedTasks
+                    : 0;
+
+            long inProgressTasks = developerTasks.stream()
+                    .filter(t -> TaskStatus.IN_PROGRESS.equals(t.getStatus()))
+                    .count();
+
+            long pendingTasks = developerTasks.stream()
+                    .filter(t -> TaskStatus.PENDING.equals(t.getStatus()))
+                    .count();
+
+            String kpisMsg = BotMessages.TEAM_KPIS_HEADER.getMessage() + "\n";
+            kpisMsg += "Desarrollador: " + developer.getName() + "\n";
+            kpisMsg += "─────────────────────────────\n";
+            kpisMsg += "Total de tareas completadas: " + completedTasks + "\n";
+            kpisMsg += "Total de horas trabajadas: " + totalHoursDone + "h\n";
+            kpisMsg += "Promedio de horas por tarea: " + String.format("%.2f", avgHoursPerTask) + "h\n";
+            kpisMsg += "Tareas en progreso: " + inProgressTasks + "\n";
+            kpisMsg += "Tareas pendientes: " + pendingTasks + "\n";
+            kpisMsg += "─────────────────────────────\n";
+
+            long highPriorityDone = developerTasks.stream()
+                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.HIGH.equals(t.getPriority()))
+                    .count();
+
+            long mediumPriorityDone = developerTasks.stream()
+                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.MEDIUM.equals(t.getPriority()))
+                    .count();
+
+            long lowPriorityDone = developerTasks.stream()
+                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.LOW.equals(t.getPriority()))
+                    .count();
+
+            kpisMsg += "Tareas completadas por prioridad:\n";
+            kpisMsg += "  - Alta: " + highPriorityDone + "\n";
+            kpisMsg += "  - Media: " + mediumPriorityDone + "\n";
+            kpisMsg += "  - Baja: " + lowPriorityDone;
+
+            BotHelper.sendMessageToTelegram(chatId, kpisMsg, telegramClient);
+
+        } catch (Exception e) {
+            logger.error("Error en fnTeamKpis", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Error al obtener KPIs del desarrollador.",
+                    telegramClient);
+        }
+
+        exit = true;
+    }
+
+    public void fnTeamTasks() {
+        if (!requestText.startsWith(BotCommands.TEAM_TASKS.getCommand()) || exit) return;
+
+        try {
+            User manager = findUserByTelegramId(String.valueOf(telegramUserId));
+            if (manager == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.USER_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.MANAGER_ONLY.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            List<Team> managerTeams = teamService.findAll().stream()
+                    .filter(t -> manager.getId() != null && manager.getId().equals(t.getManagerId()))
+                    .collect(Collectors.toList());
+
+            if (managerTeams.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        "No tienes equipos asignados.",
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            List<TeamMember> teamMembers = new ArrayList<>();
+            for (Team team : managerTeams) {
+                teamMembers.addAll(teamMemberService.findAll().stream()
+                        .filter(tm -> team.getId().equals(tm.getTeamId()))
+                        .collect(Collectors.toList()));
+            }
+
+            List<Task> allTasks = taskService.findAll();
+            List<Task> teamTasks = new ArrayList<>();
+
+            for (TeamMember member : teamMembers) {
+                Long memberId = member.getMemberUserId();
+                for (Task task : allTasks) {
+                    if (memberId != null && memberId.equals(task.getAssignedTo())) {
+                        teamTasks.add(task);
+                    }
+                }
+            }
+
+            if (teamTasks.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TEAM_TASKS_EMPTY.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            String tasksMsg = BotMessages.TEAM_TASKS_HEADER.getMessage() + "\n";
+            tasksMsg += "─────────────────────────────\n";
+
+            for (Task task : teamTasks) {
+                User assignedUser = findUserById(task.getAssignedTo());
+                String userName = assignedUser != null ? assignedUser.getName() : "Desconocido";
+
+                tasksMsg += "ID: " + task.getId()
+                        + " | " + task.getTitle()
+                        + " | " + task.getStatus()
+                        + " | " + task.getPriority()
+                        + " | Asignado a: " + userName + "\n";
+            }
+
+            tasksMsg += "─────────────────────────────\n";
+            tasksMsg += "Total de tareas: " + teamTasks.size();
+
+            BotHelper.sendMessageToTelegram(chatId, tasksMsg, telegramClient);
+
+        } catch (Exception e) {
+            logger.error("Error en fnTeamTasks", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    "Error al obtener tareas del equipo.",
+                    telegramClient);
+        }
+
+        exit = true;
+    }
+
     public void fnLLM() {
         if (!requestText.startsWith(BotCommands.LLM_REQ.getCommand()) || exit) return;
 
@@ -442,6 +690,8 @@ public class BotActions{
         fnAssignTask();
         fnCompleteTask();
         fnListTasks();
+        fnTeamKpis();
+        fnTeamTasks();
         fnLLM();
 
         boolean handled = exit;

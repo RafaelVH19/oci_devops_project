@@ -20,6 +20,15 @@ public enum BotMessages {
 	TASK_NOT_FOUND("Tarea no encontrada."),
 
 	TASK_LIST_HEADER("Tus tareas:"),
+	
+	MANAGER_ONLY("Este comando solo está disponible para gerentes."),
+	REGISTER_FIRST("Debes registrarte primero usando /register para acceder a este comando."),
+	
+	TEAM_KPIS_HEADER("KPIs del desarrollador:"),
+	DEVELOPER_NOT_IN_TEAM("El desarrollador no está en tu equipo."),
+	
+	TEAM_TASKS_HEADER("Tareas de tu equipo:"),
+	TEAM_TASKS_EMPTY("Tu equipo no tiene tareas asignadas."),
 
 	UNKNOWN_COMMAND("Comando desconocido. Por favor, ingresa un comando válido."),
 
