@@ -282,20 +282,16 @@ class BotActionsTest {
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
 
         User developer = userWithTelegramId(2L, 111111L, "DEVELOPER");
-
         Team team = teamWithIdAndManager(1L, "Team A", 7L);
         
         TeamMember teamMember = new TeamMember();
         teamMember.setTeamId(1L);
         teamMember.setMemberUserId(2L);
         
-        // Developer tasks
         Task task1 = taskWithIdAndAssignment(1L, "Completed Task", 2L, TaskStatus.DONE);
         task1.setHoursDone(3);
         task1.setPriority(TaskPriority.HIGH);
-        
         Task task2 = taskWithIdAndAssignment(2L, "In Progress Task", 2L, TaskStatus.IN_PROGRESS);
-        
         Task task3 = taskWithIdAndAssignment(3L, "Pending Task", 2L, TaskStatus.PENDING);
         
         when(userService.findAll()).thenReturn(List.of(manager, developer));
