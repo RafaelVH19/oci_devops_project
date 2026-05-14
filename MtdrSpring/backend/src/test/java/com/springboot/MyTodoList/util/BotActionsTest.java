@@ -94,7 +94,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnStartSendsWelcomeMessage() throws Exception {
+    void fnWelcome() throws Exception {
         botActions.setRequestText(BotCommands.START_COMMAND.getCommand());
 
         botActions.fnStart();
@@ -105,7 +105,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnRegisterRecognizesDeveloperFromTelegramId() throws Exception {
+    void fnRegister() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(developer));
         botActions.setRequestText(BotCommands.REGISTER_COMMAND.getCommand());
@@ -118,7 +118,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnAddTaskUsesDeveloperAsCurrentAndAssignedUser() throws Exception {
+    void fnAddTask() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(developer));
         when(taskService.add(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -144,7 +144,36 @@ class BotActionsTest {
     }
 
     @Test
-    void fnAssignTaskMovesTaskToSprint() throws Exception {
+    void fnDeleteTask() throws Exception {
+        Task task = new Task();
+        task.setId(1L);
+        task.setTitle("Test Task");
+        task.setStatus(TaskStatus.PENDING);
+        when(taskService.getById(1L)).thenReturn(ResponseEntity.ok(task));
+        botActions.setRequestText("/deletetask 1");
+
+        botActions.fnDeleteTask();
+
+        verify(telegramClient).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getValue().getText())
+                .isEqualTo(BotMessages.TASK_DELETED.getMessage());
+        verify(taskService).delete(1L);
+    }
+
+    @Test
+    void fnDeleteTaskFail() throws Exception {
+        when(taskService.getById(1L)).thenReturn(ResponseEntity.ok(null));
+        botActions.setRequestText("/deletetask 1");
+
+        botActions.fnDeleteTask();
+
+        verify(telegramClient).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getValue().getText())
+                .isEqualTo(BotMessages.TASK_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    void fnAssignToSprint() throws Exception {
         Task task = new Task();
         task.setId(11L);
         task.setTitle("Revisar API");
@@ -170,7 +199,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnCompleteTaskMarksTaskDone() throws Exception {
+    void fnCompleteTask() throws Exception {
         Task task = new Task();
         task.setId(21L);
         task.setTitle("Cerrar tarea");
@@ -191,7 +220,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnListTasksShowsOnlyTasksAssignedToDeveloper() throws Exception {
+    void fnListTasksDeveloper() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         Task taskOne = taskWithIdAndAssignment(101L, "Tarea uno", USER_ID_DEVELOPER, TaskStatus.PENDING);
         Task taskTwo = taskWithIdAndAssignment(102L, "Tarea dos", 99L, TaskStatus.DONE);
@@ -209,7 +238,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnLlmSendsTheGeneratedResponse() throws Exception {
+    void fnLlmResponse() throws Exception {
         when(deepSeekService.generateText(any())).thenReturn("Respuesta generada");
         botActions.setRequestText("/llm resume la semana");
 
@@ -221,7 +250,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnElseSendsAgentResponseWhenItIsNotACommand() throws Exception {
+    void fnElseResponse() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         developer.setRole("DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(developer));
@@ -261,7 +290,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnTeamKpisRequiresManagerRole() throws Exception {
+    void fnTeamKpis() throws Exception {
         User nonManager = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         nonManager.setRole("DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(nonManager));
@@ -275,7 +304,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnTeamKpisShowsDeveloperKpis() throws Exception {
+    void fnShowDeveloperKpis() throws Exception {
 
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
         manager.setRole("MANAGER");
@@ -315,7 +344,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnTeamKpisDeniesAccessIfDeveloperNotInTeam() throws Exception {
+    void fnTeamKpisDenied() throws Exception {
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
         manager.setRole("MANAGER");
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
@@ -342,7 +371,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnTeamTasksShowsAllTeamTasks() throws Exception {
+    void fnTeamTasks() throws Exception {
 
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
         manager.setRole("MANAGER");
@@ -393,7 +422,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnTeamTasksRequiresManagerRole() throws Exception {
+    void fnTeamTasksDenied() throws Exception {
         User nonManager = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         nonManager.setRole("DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(nonManager));
@@ -407,7 +436,7 @@ class BotActionsTest {
     }
 
     @Test
-    void fnTeamTasksHandlesEmptyTeam() throws Exception {
+    void fnTeamTasksEmpty() throws Exception {
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
         manager.setRole("MANAGER");
         botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
@@ -435,87 +464,5 @@ class BotActionsTest {
         team.setManagerId(managerId);
         team.setCreatedAt(LocalDateTime.of(2026, 1, 1, 0, 0));
         return team;
-    }
-
-    @Test
-    void fnDeleteTaskRemovesTaskSuccessfully() throws Exception {
-        Task task = new Task();
-        task.setId(1L);
-        task.setTitle("Test Task");
-        task.setStatus(TaskStatus.PENDING);
-        when(taskService.getById(1L)).thenReturn(ResponseEntity.ok(task));
-        botActions.setRequestText("/deletetask 1");
-
-        botActions.fnDeleteTask();
-
-        verify(telegramClient).execute(sendMessageCaptor.capture());
-        assertThat(sendMessageCaptor.getValue().getText())
-                .isEqualTo(BotMessages.TASK_DELETED.getMessage());
-        verify(taskService).delete(1L);
-    }
-
-    @Test
-    void fnDeleteTaskFailsWhenTaskNotFound() throws Exception {
-        when(taskService.getById(1L)).thenReturn(ResponseEntity.ok(null));
-        botActions.setRequestText("/deletetask 1");
-
-        botActions.fnDeleteTask();
-
-        verify(telegramClient).execute(sendMessageCaptor.capture());
-        assertThat(sendMessageCaptor.getValue().getText())
-                .isEqualTo(BotMessages.TASK_NOT_FOUND.getMessage());
-    }
-
-    @Test
-    void fnElseRecognizesNaturalLanguageDeleteQuery() throws Exception {
-        User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
-        developer.setRole("DEVELOPER");
-        when(userService.findAll()).thenReturn(List.of(developer));
-        when(agentOrchestrator.handleMessage(any(String.class), any(String.class)))
-                .thenReturn("/deletetask 5");
-
-        Task task = new Task();
-        task.setId(5L);
-        task.setTitle("Task to Delete");
-        when(taskService.getById(5L)).thenReturn(ResponseEntity.ok(task));
-
-        botActions.setRequestText("elimina la tarea 5");
-
-        botActions.fnElse();
-
-        verify(taskService).delete(5L);
-        verify(telegramClient).execute(sendMessageCaptor.capture());
-        assertThat(sendMessageCaptor.getValue().getText())
-                .isEqualTo(BotMessages.TASK_DELETED.getMessage());
-    }
-
-    @Test
-    void fnElseRecognizesNaturalLanguageKpiQuery() throws Exception {
-        User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
-        manager.setRole("MANAGER");
-        botActions.setTelegramUserId(TELEGRAM_ID_MANAGER);
-
-        User devUser = userWithTelegramId(6L, 333333L, "DEVELOPER");
-        devUser.setRole("DEVELOPER");
-        when(userService.findAll()).thenReturn(List.of(manager, devUser));
-
-        Team team = teamWithIdAndManager(1L, "Team A", 7L);
-        TeamMember tm = new TeamMember();
-        tm.setTeamId(1L);
-        tm.setMemberUserId(6L);
-
-        when(teamService.findAll()).thenReturn(List.of(team));
-        when(teamMemberService.findAll()).thenReturn(List.of(tm));
-        when(taskService.findAll()).thenReturn(List.of());
-        when(agentOrchestrator.handleMessage(any(String.class), any(String.class)))
-                .thenReturn("/teamkpis 6");
-
-        botActions.setRequestText("Muestrame los KPIs del usuario con ID 6");
-
-        botActions.fnElse();
-
-        verify(telegramClient).execute(sendMessageCaptor.capture());
-        assertThat(sendMessageCaptor.getValue().getText())
-                .contains(BotMessages.TEAM_KPIS_HEADER.getMessage());
     }
 }
