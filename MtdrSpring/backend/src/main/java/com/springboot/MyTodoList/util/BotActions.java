@@ -354,6 +354,58 @@ public class BotActions{
         exit = true;
     }
 
+    public void fnDeleteTask() {
+        if (!requestText.startsWith(BotCommands.DELETE_TASK.getCommand()) || exit) return;
+
+        try {
+            String taskIdStr = requestText.replace("/deletetask", "").trim();
+
+            if (taskIdStr.isEmpty()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_DELETE_ERROR.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            Long taskId = resolveTaskId(taskIdStr);
+            if (taskId == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            Task task = taskService.getById(taskId).getBody();
+
+            if (task == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            taskService.delete(taskId);
+
+            logger.info("Task eliminada");
+
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.TASK_DELETED.getMessage(),
+                    telegramClient);
+
+        } catch (Exception e) {
+            logger.error("Error delete", e);
+
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.TASK_DELETE_ERROR.getMessage(),
+                    telegramClient);
+        }
+
+        exit = true;
+    }
+
     public void fnListTasks() {
         if (!requestText.startsWith(BotCommands.LIST_TASKS.getCommand()) || exit) return;
 
@@ -659,7 +711,9 @@ public class BotActions{
         if (exit) return;
 
         try {
-            String response = agentOrchestrator.handleMessage(requestText);
+            User currentUser = findUserByTelegramId(String.valueOf(telegramUserId));
+            String userRole = currentUser != null ? currentUser.getRole() : null;
+            String response = agentOrchestrator.handleMessage(requestText, userRole);
             if (response != null && !response.isBlank()) {
                 if (isCommandLike(response)) {
                     if (dispatchDerivedCommand(response.trim())) {
@@ -687,6 +741,7 @@ public class BotActions{
         fnStart();
         fnRegister();
         fnAddTask();
+        fnDeleteTask();
         fnAssignTask();
         fnCompleteTask();
         fnListTasks();

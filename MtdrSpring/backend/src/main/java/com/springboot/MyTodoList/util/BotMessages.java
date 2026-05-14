@@ -3,7 +3,7 @@ package com.springboot.MyTodoList.util;
 public enum BotMessages {
 	
 	WELCOME(
-	"Hola! Soy MyTodoList Bot!\n Ingrese alguno de los comandos disponibles: \n /register - para validar el usuario \n /addtask - para agregar una tarea a la lista (formato: /addtask \"<titulo>\" | \"<descripcion>\" | <horas> | <prioridad (LOW, MEDIUM, HIGH)> | <ID de Usuario>) \n /assigntask - para asignar una tarea a un sprint \n /completetask - para marcar una tarea como completada \n /mytasks - para ver todas las tareas"),
+	"Hola! Soy MyTodoList Bot!\n Ingrese alguno de los comandos disponibles: \n /register - para validar el usuario \n /addtask - para agregar una tarea a la lista (formato: /addtask \"<titulo>\" | \"<descripcion>\" | <horas> | <prioridad (LOW, MEDIUM, HIGH)> | <ID de Usuario>) \n /deletetask - para eliminar una tarea (formato: /deletetask <ID o titulo>) \n /assigntask - para asignar una tarea a un sprint \n /completetask - para marcar una tarea como completada \n /mytasks - para ver todas las tareas"),
 	USER_OK("Usuario reconocido, bienvenido"),
 	USER_NOT_FOUND("Usuario no encontrado."),
 
@@ -16,6 +16,9 @@ public enum BotMessages {
 
 	TASK_COMPLETED("Tarea marcada como completada!"),
 	TASK_COMPLETE_ERROR("Error al completar la tarea. Asegúrate de usar el formato correcto: /completetask <Numero de tarea> | <horas> "),
+
+	TASK_DELETED("Tarea eliminada exitosamente!"),
+	TASK_DELETE_ERROR("Error al eliminar la tarea. Asegúrate de que la tarea existe."),
 
 	TASK_NOT_FOUND("Tarea no encontrada."),
 

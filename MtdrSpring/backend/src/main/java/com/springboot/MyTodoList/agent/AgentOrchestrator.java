@@ -18,6 +18,10 @@ public class AgentOrchestrator {
     }
 
     public String handleMessage(String messageText) {
+        return handleMessage(messageText, null);
+    }
+
+    public String handleMessage(String messageText, String userRole) {
         ParsedIntent parsedIntent = llmIntentParser.parse(messageText);
 
         if (parsedIntent.getResponseText() != null && !parsedIntent.getResponseText().isBlank()) {
@@ -30,7 +34,7 @@ public class AgentOrchestrator {
 
         switch (parsedIntent.getIntent()) {
             case HELP:
-                return helpText();
+                return helpText(userRole);
             case LIST_TASKS:
                 return formatTasks("Estas son las tareas registradas:", workspaceService.findAllTasks());
             case LIST_TASKS_BY_ASSIGNEE:
@@ -41,6 +45,10 @@ public class AgentOrchestrator {
                     workspaceService.findTasksByStatus(parsedIntent.getStatus()));
             case CREATE_TASK:
                 return createTask(parsedIntent);
+            case DELETE_TASK:
+                return deleteTaskResponse(parsedIntent);
+            case GET_DEVELOPER_KPI:
+                return getDeveloperKpiResponse(parsedIntent);
             case CURRENT_SPRINT_SUMMARY:
                 return sprintSummary();
             case TEAM_LOAD_SUMMARY:
@@ -69,6 +77,24 @@ public class AgentOrchestrator {
             + "Estado: " + task.getStatus() + "\n"
             + "Story points: " + task.getStoryPoints() + "\n"
             + "Sprint: " + task.getSprintName();
+    }
+
+    private String deleteTaskResponse(ParsedIntent parsedIntent) {
+        if (parsedIntent.getTaskId() == null && parsedIntent.getTitle() == null) {
+            return "Necesito el ID o nombre de la tarea para poder eliminarla.";
+        }
+        
+        return "Para eliminar la tarea, usa el comando: /deletetask " 
+            + (parsedIntent.getTaskId() != null ? parsedIntent.getTaskId() : parsedIntent.getTitle());
+    }
+
+    private String getDeveloperKpiResponse(ParsedIntent parsedIntent) {
+        if (parsedIntent.getTaskId() == null && parsedIntent.getDeveloperName() == null) {
+            return "Necesito el ID o nombre del desarrollador para ver sus KPIs.";
+        }
+        
+        return "Para ver los KPIs del desarrollador, usa el comando: /teamkpis " 
+            + (parsedIntent.getTaskId() != null ? parsedIntent.getTaskId() : parsedIntent.getDeveloperName());
     }
 
     private String sprintSummary() {
@@ -125,16 +151,30 @@ public class AgentOrchestrator {
         return joiner.toString().trim();
     }
 
-    private String helpText() {
-        return "Puedo ayudarte con consultas y acciones del proyecto, incluso en lenguaje natural.\n\n"
+    private String helpText(String userRole) {
+        String help = "Puedo ayudarte con consultas y acciones del proyecto, incluso en lenguaje natural.\n\n"
             + "Ejemplos:\n"
             + "- que tareas tiene ana\n"
             + "- que tareas siguen pendientes\n"
             + "- crea una tarea llamada revisar la api con descripcion validar contratos asignada a luis de prioridad alta con 4 horas\n"
-            + "- asigna la tarea 12 al sprint 3\n"
-            + "- completa la tarea revisar la api con 3 horas\n"
             + "- como va el sprint actual\n"
-            + "- quien tiene mas carga";
+            + "- quien tiene mas carga\n\n"
+            + "Comandos disponibles:\n"
+            + "/register - Registrarse como usuario\n"
+            + "/addtask - Agregar nueva tarea\n"
+            + "/deletetask - Eliminar una tarea\n"
+            + "/assigntask - Asignar tarea a un sprint\n"
+            + "/completetask - Marcar tarea como completada\n"
+            + "/mytasks - Ver mis tareas\n"
+            + "/llm - Hacer pregunta libre a la IA";
+        
+        if ("MANAGER".equalsIgnoreCase(userRole)) {
+            help += "\n\nComandos de GERENTE:\n"
+                + "/teamkpis <desarrollador> - Ver KPIs de un desarrollador\n"
+                + "/teamtasks - Ver todas las tareas del equipo";
+        }
+        
+        return help;
     }
 
     private String safe(String value) {

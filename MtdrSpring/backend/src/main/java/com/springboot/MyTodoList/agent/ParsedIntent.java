@@ -8,6 +8,8 @@ public class ParsedIntent {
     private String title;
     private Integer storyPoints;
     private String sprintName;
+    private String taskId;
+    private String developerName;
     private boolean clarificationNeeded;
     private String clarificationQuestion;
     private String responseText;
@@ -82,5 +84,21 @@ public class ParsedIntent {
 
     public void setResponseText(String responseText) {
         this.responseText = responseText;
+    }
+
+    public String getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
+    }
+
+    public String getDeveloperName() {
+        return developerName;
+    }
+
+    public void setDeveloperName(String developerName) {
+        this.developerName = developerName;
     }
 }

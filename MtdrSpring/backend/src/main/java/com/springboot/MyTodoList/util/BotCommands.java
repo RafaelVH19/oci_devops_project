@@ -5,6 +5,7 @@ public enum BotCommands {
 	START_COMMAND("/start"), 
 	REGISTER_COMMAND("/register"), 
 	ADD_TASK("/addtask"),
+	DELETE_TASK("/deletetask"),
 	ASSIGN_TASK("/assigntask"),
 	COMPLETE_TASK("/completetask"),
 	LIST_TASKS("/mytasks"),

@@ -55,7 +55,46 @@ public class RuleBasedIntentParser implements IntentParser {
             return intent;
         }
 
-        
+        if (normalized.contains("muestra mis tareas") || normalized.contains("ver mis tareas") || 
+            normalized.contains("que tareas tengo") || normalized.contains("mis tareas")) {
+            intent.setIntent(IntentType.LIST_TASKS_BY_ASSIGNEE);
+            intent.setResponseText("/mytasks");
+            return intent;
+        }
+
+        // KPI queries: "muestrame los KPIs del usuario con ID 6" or "KPIs del desarrollador 6"
+        if (normalized.contains("kpi") && (normalized.contains("usuario") || normalized.contains("desarrollador"))) {
+            intent.setIntent(IntentType.GET_DEVELOPER_KPI);
+            // Extract the developer ID or name
+            Pattern kpiPattern = Pattern.compile("(?:del (?:usuario|desarrollador) (?:con )?id )?(\\d+)|(?:del (?:usuario|desarrollador) )([a-zA-ZáéíóúÁÉÍÓÚñÑ ]+)", Pattern.CASE_INSENSITIVE);
+            Matcher kpiMatcher = kpiPattern.matcher(text);
+            if (kpiMatcher.find()) {
+                if (kpiMatcher.group(1) != null) {
+                    intent.setTaskId(kpiMatcher.group(1));
+                } else if (kpiMatcher.group(2) != null) {
+                    intent.setDeveloperName(capitalize(kpiMatcher.group(2).trim()));
+                }
+            }
+            return intent;
+        }
+
+        // Delete task queries: "elimina la tarea 5", "borra la tarea revisar api", etc.
+        if (normalized.contains("elimina") || normalized.contains("borra") || normalized.contains("delete")) {
+            if (normalized.contains("tarea")) {
+                intent.setIntent(IntentType.DELETE_TASK);
+                // Try to extract task ID
+                Pattern deletePattern = Pattern.compile("(?:tarea )?(\\d+)|(?:tarea )([a-zA-ZáéíóúÁÉÍÓÚñÑ ]+)", Pattern.CASE_INSENSITIVE);
+                Matcher deleteMatcher = deletePattern.matcher(text);
+                if (deleteMatcher.find()) {
+                    if (deleteMatcher.group(1) != null) {
+                        intent.setTaskId(deleteMatcher.group(1));
+                    } else if (deleteMatcher.group(2) != null) {
+                        intent.setTitle(capitalize(deleteMatcher.group(2).trim()));
+                    }
+                }
+                return intent;
+            }
+        }
 
         Matcher matcher = CREATE_TASK_PATTERN.matcher(text);
         if (matcher.find()) {
