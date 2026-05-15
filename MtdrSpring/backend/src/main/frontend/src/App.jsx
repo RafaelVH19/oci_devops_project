@@ -59,7 +59,6 @@ function App() {
     return current;
   };
 
-  // Sort sprints with current sprint first
   const sortSprints = (sprintList, current) => {
     if (!current) return sprintList;
     
@@ -73,12 +72,10 @@ function App() {
     });
   };
 
-  // Get tasks for a specific sprint
   const getSprintTasks = (sprintId) => {
     return items.filter(item => item.sprint?.id === sprintId);
   };
 
-  // Filter tasks based on search term
   const filterTasksBySearch = (tasks) => {
     if (!searchTerm.trim()) return tasks;
     
