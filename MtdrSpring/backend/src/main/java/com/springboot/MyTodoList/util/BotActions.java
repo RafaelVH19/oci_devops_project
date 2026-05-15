@@ -548,22 +548,8 @@ public class BotActions{
             kpisMsg += "Tareas pendientes: " + pendingTasks + "\n";
             kpisMsg += "─────────────────────────────\n";
 
-            long highPriorityDone = developerTasks.stream()
-                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.HIGH.equals(t.getPriority()))
-                    .count();
-
-            long mediumPriorityDone = developerTasks.stream()
-                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.MEDIUM.equals(t.getPriority()))
-                    .count();
-
-            long lowPriorityDone = developerTasks.stream()
-                    .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.LOW.equals(t.getPriority()))
-                    .count();
-
             kpisMsg += "Tareas completadas por prioridad:\n";
-            kpisMsg += "  - Alta: " + highPriorityDone + "\n";
-            kpisMsg += "  - Media: " + mediumPriorityDone + "\n";
-            kpisMsg += "  - Baja: " + lowPriorityDone;
+                kpisMsg += buildCompletedTasksByPrioritySection(developerTasks);
 
             BotHelper.sendMessageToTelegram(chatId, kpisMsg, telegramClient);
 
@@ -665,6 +651,24 @@ public class BotActions{
 
         exit = true;
     }
+
+        private String buildCompletedTasksByPrioritySection(List<Task> developerTasks) {
+        long highPriorityDone = developerTasks.stream()
+            .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.HIGH.equals(t.getPriority()))
+            .count();
+
+        long mediumPriorityDone = developerTasks.stream()
+            .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.MEDIUM.equals(t.getPriority()))
+            .count();
+
+        long lowPriorityDone = developerTasks.stream()
+            .filter(t -> TaskStatus.DONE.equals(t.getStatus()) && TaskPriority.LOW.equals(t.getPriority()))
+            .count();
+
+        return "  - Alta: " + highPriorityDone + "\n"
+            + "  - Media: " + mediumPriorityDone + "\n"
+            + "  - Baja: " + lowPriorityDone;
+        }
 
     public void fnLLM() {
         if (!requestText.startsWith(BotCommands.LLM_REQ.getCommand()) || exit) return;

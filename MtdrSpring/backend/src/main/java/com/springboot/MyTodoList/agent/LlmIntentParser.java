@@ -107,15 +107,7 @@ public class LlmIntentParser implements IntentParser {
             + "- 'que tareas siguen en progreso' => intent LIST_TASKS_BY_STATUS, status='IN_PROGRESS'\n"
             + "- 'como uso el bot para completar una tarea' => intent UNKNOWN, responseText con una explicacion breve del comando /completetask\n";
 
-        Map<String, Object> systemMsg = new HashMap<>();
-        systemMsg.put("role", "system");
-        systemMsg.put("content", systemPrompt);
-
-        Map<String, Object> userMsg = new HashMap<>();
-        userMsg.put("role", "user");
-        userMsg.put("content", messageText == null ? "" : messageText);
-
-        List<Map<String, Object>> messages = List.of(systemMsg, userMsg);
+        List<Map<String, Object>> messages = buildMessages(systemPrompt, messageText);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("model", aiProps.getModel());
@@ -155,15 +147,7 @@ public class LlmIntentParser implements IntentParser {
             + commandCatalog() + "\n"
             + "Cuando el usuario pregunte algo como 'Como agrego una tarea?', prioriza explicar /addtask con un ejemplo completo y en espanol.";
 
-        Map<String, Object> systemMsg = new HashMap<>();
-        systemMsg.put("role", "system");
-        systemMsg.put("content", systemPrompt);
-
-        Map<String, Object> userMsg = new HashMap<>();
-        userMsg.put("role", "user");
-        userMsg.put("content", messageText == null ? "" : messageText);
-
-        List<Map<String, Object>> messages = List.of(systemMsg, userMsg);
+        List<Map<String, Object>> messages = buildMessages(systemPrompt, messageText);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("model", aiProps.getModel());
@@ -190,6 +174,20 @@ public class LlmIntentParser implements IntentParser {
             .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiProps.getApiKey())
             .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             .build();
+    }
+
+    private List<Map<String, Object>> buildMessages(String systemPrompt, String messageText) {
+        return List.of(
+            buildMessage("system", systemPrompt),
+            buildMessage("user", messageText == null ? "" : messageText)
+        );
+    }
+
+    private Map<String, Object> buildMessage(String role, String content) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("role", role);
+        message.put("content", content);
+        return message;
     }
 
     private String commandCatalog() {

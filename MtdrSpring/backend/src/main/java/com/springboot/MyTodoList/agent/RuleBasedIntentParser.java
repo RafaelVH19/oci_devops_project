@@ -62,8 +62,7 @@ public class RuleBasedIntentParser implements IntentParser {
             return intent;
         }
 
-        // KPI queries: "muestrame los KPIs del usuario con ID 6" or "KPIs del desarrollador 6"
-        if (normalized.contains("kpi") && (normalized.contains("usuario") || normalized.contains("desarrollador"))) {
+        if (isKpiQuery(normalized)) {
             intent.setIntent(IntentType.GET_DEVELOPER_KPI);
             // Extract the developer ID or name
             Pattern kpiPattern = Pattern.compile("(?:del (?:usuario|desarrollador) (?:con )?id )?(\\d+)|(?:del (?:usuario|desarrollador) )([a-zA-ZáéíóúÁÉÍÓÚñÑ ]+)", Pattern.CASE_INSENSITIVE);
@@ -119,5 +118,10 @@ public class RuleBasedIntentParser implements IntentParser {
             return value;
         }
         return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+    }
+
+    private boolean isKpiQuery(String normalized) {
+        return normalized.contains("kpi")
+            && (normalized.contains("usuario") || normalized.contains("desarrollador"));
     }
 }
