@@ -156,7 +156,7 @@ public class BotActions{
         try {
             String[] parts = requestText.replace("/addtask", "").trim().split("\\|");
 
-            if (parts.length < 5) {
+            if (parts.length < 8) {
                 throw new IllegalArgumentException("Formato incompleto para /addtask");
             }
 
@@ -167,9 +167,11 @@ public class BotActions{
             String title = extractQuotedValue(parts[0]);
             String description = extractQuotedValue(parts[1]);
 
-            int horas = Integer.parseInt(parts[2]);
+            int expectedHours = Integer.parseInt(parts[2]);
+            int hoursDone = Integer.parseInt(parts[3]);
+            int storyPoints = Integer.parseInt(parts[4]);
 
-            if (horas > 4) {
+            if (expectedHours > 4) {
                 BotHelper.sendMessageToTelegram(chatId,
                         BotMessages.TASK_MAX_HOURS.getMessage(),
                         telegramClient);
@@ -187,7 +189,7 @@ public class BotActions{
                 return;
             }
 
-            Long assignedUserId = resolveUserId(parts[4], false);
+            Long assignedUserId = resolveUserId(parts[7], false);
 
             if (assignedUserId == null) {
                 BotHelper.sendMessageToTelegram(chatId,
@@ -197,10 +199,18 @@ public class BotActions{
                 return;
             }
 
+            Boolean isBug = Boolean.parseBoolean(parts[6]);
+
             Task task = new Task();
             task.setTitle(title);
             task.setDescription(description);
-            task.setPriority(parsePriority(parts[3]));
+            task.setExpectedHours(expectedHours);
+            task.setHoursDone(hoursDone);
+            task.setStoryPoints(storyPoints);
+            task.setPriority(parsePriority(parts[5]));
+            task.setIsBug(isBug);
+            task.setBugsReported(0);
+            task.setCarryOverCount(0);
             task.setAssignedTo(assignedUserId);
             task.setCreatedBy(user.getId());
             task.setStatus(TaskStatus.PENDING);
@@ -335,6 +345,7 @@ public class BotActions{
 
             task.setStatus(TaskStatus.DONE);
             task.setHoursDone(horas);
+            task.setCompletedDate(LocalDateTime.now());
             taskService.update(taskId, task);
 
             logger.info("Task completada");
@@ -400,6 +411,69 @@ public class BotActions{
 
             BotHelper.sendMessageToTelegram(chatId,
                     BotMessages.TASK_DELETE_ERROR.getMessage(),
+                    telegramClient);
+        }
+
+        exit = true;
+    }
+
+    public void fnReportBug() {
+        if (!requestText.startsWith(BotCommands.REPORT_BUG.getCommand()) || exit) return;
+
+        try {
+            String[] parts = requestText.replace("/reportbug", "").trim().split("\\|");
+
+            if (parts.length < 3) {
+                throw new IllegalArgumentException("Formato incompleto para /reportbug");
+            }
+
+            for (int i = 0; i < parts.length; i++) {
+                parts[i] = parts[i].trim();
+            }
+
+            Long taskId = resolveTaskId(parts[0]);
+            if (taskId == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            Task task = taskService.getById(taskId).getBody();
+
+            if (task == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.TASK_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            int bugsReported = Integer.parseInt(parts[1]);
+            String bugSeverity = parts[2].toUpperCase();
+
+            // Validate severity
+            if (!bugSeverity.matches("LOW|MEDIUM|HIGH|CRITICAL")) {
+                throw new IllegalArgumentException("Severidad inválida");
+            }
+
+            task.setIsBug(true);
+            task.setBugsReported((task.getBugsReported() != null ? task.getBugsReported() : 0) + bugsReported);
+            task.setBugSeverity(bugSeverity);
+            taskService.update(taskId, task);
+
+            logger.info("Bug reportado para tarea: " + task.getTitle());
+
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.BUG_REPORTED.getMessage(),
+                    telegramClient);
+
+        } catch (Exception e) {
+            logger.error("Error reporting bug", e);
+
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.BUG_REPORT_ERROR.getMessage(),
                     telegramClient);
         }
 
@@ -745,6 +819,7 @@ public class BotActions{
         fnStart();
         fnRegister();
         fnAddTask();
+        fnReportBug();
         fnDeleteTask();
         fnAssignTask();
         fnCompleteTask();

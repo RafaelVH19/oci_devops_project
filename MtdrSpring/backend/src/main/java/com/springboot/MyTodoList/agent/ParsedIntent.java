@@ -7,6 +7,9 @@ public class ParsedIntent {
     private String status;
     private String title;
     private Integer storyPoints;
+    private Integer expectedHours;
+    private Boolean isBug;
+    private String bugSeverity;
     private String sprintName;
     private String taskId;
     private String developerName;
@@ -100,5 +103,29 @@ public class ParsedIntent {
 
     public void setDeveloperName(String developerName) {
         this.developerName = developerName;
+    }
+
+    public Integer getExpectedHours() {
+        return expectedHours;
+    }
+
+    public void setExpectedHours(Integer expectedHours) {
+        this.expectedHours = expectedHours;
+    }
+
+    public Boolean getIsBug() {
+        return isBug;
+    }
+
+    public void setIsBug(Boolean isBug) {
+        this.isBug = isBug;
+    }
+
+    public String getBugSeverity() {
+        return bugSeverity;
+    }
+
+    public void setBugSeverity(String bugSeverity) {
+        this.bugSeverity = bugSeverity;
     }
 }
