@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class RuleBasedIntentParser implements IntentParser {
 
     private static final Pattern CREATE_TASK_PATTERN =
-        Pattern.compile("crea(?:r)? una tarea para (.+?)(?: y asigna(?:la)? a ([a-zA-ZáéíóúÁÉÍÓÚñÑ ]+))?(?: con (\\d+) puntos?)?", Pattern.CASE_INSENSITIVE);
+        Pattern.compile("crea(?:r)? (?:una tarea|un bug) para (.+?)(?= y asigna| con \\d|$)(?: y asigna(?:la)? a ((?:(?! con \\d)[a-zA-ZáéíóúÁÉÍÓÚñÑ ])+))?(?: con (\\d+) puntos?)?", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern BUG_REPORT_PATTERN =
         Pattern.compile("reporta(?:r)? (?:un )?bug(?: en| para)? (?:tarea )?(\\d+)(?: con severidad ([a-zA-Z]+))?", Pattern.CASE_INSENSITIVE);
