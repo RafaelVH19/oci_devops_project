@@ -66,7 +66,7 @@ public class Task {
     @Column(name = "STORY_POINTS")
     private Integer storyPoints;
 
-    @Column(name = "IS_BUG", nullable = false)
+    @Column(name = "IS_BUG", nullable = false, columnDefinition = "number(1,0) default 0")
     private Boolean isBug = false;
 
     @Column(name = "BUGS_REPORTED")
