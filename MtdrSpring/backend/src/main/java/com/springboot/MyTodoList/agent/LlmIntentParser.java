@@ -30,32 +30,42 @@ public class LlmIntentParser implements IntentParser {
 
     @Override
     public ParsedIntent parse(String messageText) {
+        ParsedIntent basicIntent = fallbackParser.parse(messageText);
+        if (basicIntent.getIntent() != IntentType.UNKNOWN || basicIntent.getResponseText() != null) {
+            return basicIntent;
+        }
+
         if (!aiProps.isEnabled() || aiProps.getApiKey() == null || aiProps.getApiKey().isBlank()) {
-            return fallbackParser.parse(messageText);
+            return basicIntent;
         }
 
         try {
             ParsedIntent parsedIntent = requestIntentClassification(messageText);
             if (parsedIntent == null) {
-                return fallbackParser.parse(messageText);
+                return basicIntent;
             }
 
             if (parsedIntent.isClarificationNeeded()) {
                 return parsedIntent;
             }
 
-            if (parsedIntent.getIntent() == IntentType.UNKNOWN) {
+            if (parsedIntent.getIntent() == IntentType.UNKNOWN
+                && (parsedIntent.getResponseText() == null || parsedIntent.getResponseText().isBlank())) {
                 String responseText = requestGeneralResponse(messageText);
                 if (responseText != null && !responseText.isBlank()) {
                     parsedIntent.setResponseText(responseText);
-                    return parsedIntent;
                 }
+            }
+
+            if (parsedIntent.getIntent() == IntentType.UNKNOWN
+                && (parsedIntent.getResponseText() == null || parsedIntent.getResponseText().isBlank())) {
+                return basicIntent;
             }
 
             return parsedIntent;
         } catch (Exception ex) {
             logger.warn("Falló el parser LLM. Uso fallback local.", ex);
-            return fallbackParser.parse(messageText);
+            return basicIntent;
         }
     }
 
@@ -63,31 +73,41 @@ public class LlmIntentParser implements IntentParser {
         RestClient client = createClient();
         String endpoint = aiProps.getBaseUrl().replaceAll("/$", "") + "/chat/completions";
 
-        String systemPrompt = "Eres un clasificador de intenciones para un asistente de gestion agile.\n"
-            + "Debes responder solo JSON valido, sin bloques de codigo ni texto extra.\n"
+        String systemPrompt = "Eres un clasificador y planificador de acciones para un asistente en espanol.\n"
+            + "Debes responder solo JSON valido, sin bloques de codigo ni texto extra.\n\n"
+            + "Tu trabajo es hacer una de estas dos cosas:\n"
+            + "1. Clasificar consultas informativas que el sistema ya sabe ejecutar.\n"
+            + "2. Convertir una solicitud natural en un comando canonico que el bot pueda ejecutar.\n\n"
             + "Intenciones permitidas:\n"
             + "HELP\n"
             + "LIST_TASKS\n"
             + "LIST_TASKS_BY_ASSIGNEE\n"
             + "LIST_TASKS_BY_STATUS\n"
             + "CREATE_TASK\n"
+            + "DELETE_TASK\n"
+            + "GET_DEVELOPER_KPI\n"
             + "CURRENT_SPRINT_SUMMARY\n"
             + "TEAM_LOAD_SUMMARY\n"
             + "UNKNOWN\n\n"
-            + "Devuelve JSON con:\n"
-            + "intent, assignee, status, title, storyPoints, sprintName, clarificationNeeded, clarificationQuestion.\n"
-            + "Si falta informacion importante, pide aclaracion.\n"
-            + "Si el usuario pregunta por como usar comandos, formatos o ejemplos (por ejemplo: como agrego una tarea), usa intent UNKNOWN y no pidas aclaracion.";
+            + "Devuelve JSON con estas claves:\n"
+            + "intent, assignee, status, title, storyPoints, sprintName, taskId, developerName, clarificationNeeded, clarificationQuestion, responseText.\n\n"
+            + "Reglas:\n"
+            + "- Si el usuario pide una accion ejecutable y hay informacion suficiente, usa intent UNKNOWN y coloca en responseText el comando canonico exacto a ejecutar.\n"
+            + "- Si el usuario pide una consulta que ya conoce el sistema, usa el intent correspondiente y deja responseText vacio.\n"
+            + "- Si falta informacion importante para ejecutar una accion, usa clarificationNeeded=true y formula una sola pregunta concreta.\n"
+            + "- Si el usuario pregunta como usar comandos, formatos o ejemplos, devuelve una respuesta util en responseText y deja clarificationNeeded=false.\n\n"
+            + "Comandos canonicos disponibles:\n"
+            + commandCatalog() + "\n"
+            + "Ejemplos de traduccion:\n"
+            + "- 'crea una tarea llamada x con descripcion y asignada a persona z de prioridad alta con cantidad de horas 2' => intent UNKNOWN, responseText='/addtask \"x\" | \"y\" | 2 | HIGH | z'\n"
+            + "- 'muestrame los KPIs del usuario con ID 6' => intent GET_DEVELOPER_KPI, taskId='6'\n"
+            + "- 'elimina la tarea 5' => intent DELETE_TASK, taskId='5'\n"
+            + "- 'borra la tarea revisar API' => intent DELETE_TASK, title='revisar API'\n"
+            + "- 'muestrame las tareas de ana' => intent LIST_TASKS_BY_ASSIGNEE, assignee='Ana'\n"
+            + "- 'que tareas siguen en progreso' => intent LIST_TASKS_BY_STATUS, status='IN_PROGRESS'\n"
+            + "- 'como uso el bot para completar una tarea' => intent UNKNOWN, responseText con una explicacion breve del comando /completetask\n";
 
-        Map<String, Object> systemMsg = new HashMap<>();
-        systemMsg.put("role", "system");
-        systemMsg.put("content", systemPrompt);
-
-        Map<String, Object> userMsg = new HashMap<>();
-        userMsg.put("role", "user");
-        userMsg.put("content", messageText == null ? "" : messageText);
-
-        List<Map<String, Object>> messages = List.of(systemMsg, userMsg);
+        List<Map<String, Object>> messages = buildMessages(systemPrompt, messageText);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("model", aiProps.getModel());
@@ -122,24 +142,12 @@ public class LlmIntentParser implements IntentParser {
         String systemPrompt = "Eres un asistente general en espanol.\n"
             + "Responde de forma breve, clara y util a cualquier pregunta del usuario.\n"
             + "No uses bloques de codigo ni texto extra.\n"
-            + "Si hace falta, da pasos concretos.\n"
-            + "Si la pregunta es sobre como usar el bot o como ejecutar acciones, responde con el formato exacto de comandos disponibles:\n"
-            + "/register - validar usuario\n"
-            + "/addtask \"<titulo>\" | \"<descripcion>\" | <horas> | <prioridad (LOW, MEDIUM, HIGH)> | <ID de Usuario>\n"
-            + "/assigntask <Numero de tarea> | <Numero de sprint>\n"
-            + "/completetask <Numero de tarea> | <horas>\n"
-            + "/mytasks - listar tareas\n"
-            + "Cuando el usuario pregunte algo como 'Como agrego una tarea?', prioriza explicar /addtask con un ejemplo completo.";
+            + "Si hace falta, da pasos concretos.\n\n"
+            + "Si la pregunta es sobre como usar el bot o como ejecutar acciones, responde con el formato exacto de los comandos disponibles:\n"
+            + commandCatalog() + "\n"
+            + "Cuando el usuario pregunte algo como 'Como agrego una tarea?', prioriza explicar /addtask con un ejemplo completo y en espanol.";
 
-        Map<String, Object> systemMsg = new HashMap<>();
-        systemMsg.put("role", "system");
-        systemMsg.put("content", systemPrompt);
-
-        Map<String, Object> userMsg = new HashMap<>();
-        userMsg.put("role", "user");
-        userMsg.put("content", messageText == null ? "" : messageText);
-
-        List<Map<String, Object>> messages = List.of(systemMsg, userMsg);
+        List<Map<String, Object>> messages = buildMessages(systemPrompt, messageText);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("model", aiProps.getModel());
@@ -166,6 +174,40 @@ public class LlmIntentParser implements IntentParser {
             .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiProps.getApiKey())
             .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             .build();
+    }
+
+    private List<Map<String, Object>> buildMessages(String systemPrompt, String messageText) {
+        return List.of(
+            buildMessage("system", systemPrompt),
+            buildMessage("user", messageText == null ? "" : messageText)
+        );
+    }
+
+    private Map<String, Object> buildMessage(String role, String content) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("role", role);
+        message.put("content", content);
+        return message;
+    }
+
+    private String commandCatalog() {
+        return "- /start: muestra el mensaje de bienvenida.\n"
+            + "- /register: valida al usuario Telegram actual.\n"
+            + "- /addtask \"<titulo>\" | \"<descripcion>\" | <horas> | <prioridad (LOW, MEDIUM, HIGH)> | <ID o nombre de usuario>: crea una tarea.\n"
+            + "- /deletetask <ID o titulo de tarea>: elimina una tarea.\n"
+            + "- /assigntask <ID o titulo de tarea> | <ID o nombre de sprint>: asigna una tarea a un sprint y la mueve a IN_PROGRESS.\n"
+            + "- /completetask <ID o titulo de tarea> | <horas>: marca la tarea como DONE y guarda las horas trabajadas.\n"
+            + "- /mytasks: lista las tareas asignadas al usuario Telegram actual.\n"
+            + "- /teamkpis <ID o nombre de desarrollador>: muestra los KPIs de un desarrollador (solo para gerentes).\n"
+            + "- /teamtasks: muestra todas las tareas del equipo del gerente (solo para gerentes).\n"
+            + "- /llm <pregunta>: envia una pregunta libre al modelo de IA.\n"
+            + "- GET /tasks, POST /tasks, PUT /tasks/{id}, DELETE /tasks/{id}: CRUD de tareas del backend.\n"
+            + "- GET /sprints, POST /sprints, PUT /sprints/{id}, DELETE /sprints/{id}: CRUD de sprints.\n"
+            + "- GET /teams, POST /teams, PUT /teams/{id}, DELETE /teams/{id}: CRUD de equipos.\n"
+            + "- GET /users, POST /adduser, PUT /updateUser/{id}, DELETE /deleteUser/{id}: CRUD de usuarios.\n"
+            + "- GET /sprint-tasks, POST /sprint-tasks, PUT /sprint-tasks/{sprintId}/{taskId}, DELETE /sprint-tasks/{sprintId}/{taskId}: relacion sprint-tarea.\n"
+            + "- GET /team-members, POST /team-members, PUT /team-members/{teamId}/{userId}, DELETE /team-members/{teamId}/{userId}: relacion equipo-usuario.\n"
+            + "- GET /todolist, POST /todolist, PUT /todolist/{id}, DELETE /todolist/{id}: lista legada de tareas.\n";
     }
 
     private String extractJsonPayload(String content) {
