@@ -25,6 +25,7 @@ export default function DevTaskRow({
   if (isCompleted) {
     return (
       <div
+        id={`dev-task-${item.id}`}
         className={`dashboard-row-enter flex items-start gap-3 border-b border-[#2A1814]/[0.08] px-1 py-3.5 transition-colors hover:bg-[#2A1814]/[0.015] last:border-b-0 ${
           highlighted ? 'ring-2 ring-[#c74634]/25 ring-offset-2 ring-offset-[#faf9f6]' : ''
         }`}
@@ -60,6 +61,7 @@ export default function DevTaskRow({
 
   return (
     <div
+      id={`dev-task-${item.id}`}
       className={`dashboard-row-enter flex flex-col gap-3 border-b border-[#2A1814]/[0.08] px-1 py-3.5 sm:flex-row sm:items-center sm:justify-between last:border-b-0 ${
         highlighted ? 'ring-2 ring-[#c74634]/25 ring-offset-2 ring-offset-[#faf9f6]' : ''
       }`}

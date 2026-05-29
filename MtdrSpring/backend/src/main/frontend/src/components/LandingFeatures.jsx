@@ -22,7 +22,7 @@ const featureColumns = [
     id: 'lumi',
     title: 'Meet Lumi',
     description:
-      'Your AI copilot inside Lumen. Ask in plain language, dictate tasks, and keep context without leaving the workspace.',
+      'Dictate tasks, ask for help with planning and sprinting, and keep all of the context in one place without leaving the workspace.',
     imageSrc: '/lumi.svg',
     imageAlt: 'Lumi AI assistant connected to sprint and dashboard views',
   },

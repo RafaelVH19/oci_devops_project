@@ -17,7 +17,7 @@ function Dashboard() {
 
   return (
     <ToastProvider>
-    <div className="h-screen overflow-hidden bg-white text-[#2A1814]">
+    <div className="dashboard-shell h-screen overflow-hidden bg-white text-[#2A1814]">
       <DashboardSidebar />
 
       <div className="flex h-full min-w-0 flex-col overflow-hidden pl-56 lg:pl-60">

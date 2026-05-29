@@ -891,3 +891,13 @@ html:has(.dev-app-page)::-webkit-scrollbar-thumb:active {
     opacity 0.52s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.52s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Demo hosting: fixed banner + layout offset */
+html.demo-mode-active .dashboard-shell {
+  height: calc(100dvh - 2.75rem);
+  margin-top: 2.75rem;
+}
+
+html.demo-mode-active .dev-app-page {
+  padding-top: 2.75rem;
+}

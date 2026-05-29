@@ -100,6 +100,19 @@ export const MOCK_TASKS = [
     expectedHours: 8,
     isBug: true,
   },
+  {
+    id: 7,
+    title: 'Backlog grooming',
+    status: 'PENDING',
+    priority: 'LOW',
+    description: 'Review and prioritize upcoming work.',
+    assignedTo: 1,
+    sprint: null,
+    hoursDone: 0,
+    expectedHours: 2,
+    isBug: false,
+    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
 ];
 
 export const MOCK_SPRINTS = [

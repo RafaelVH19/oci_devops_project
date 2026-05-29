@@ -17,9 +17,18 @@ import Landing from './Landing';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import LumiAssistant from './components/dashboard/LumiAssistant';
+import DemoBanner from './components/DemoBanner';
+import { isDemoMode } from './config/demoMode';
+import { installDemoFetch } from './demo/installDemoFetch';
+
+if (isDemoMode) {
+  installDemoFetch();
+  document.documentElement.classList.add('demo-mode-active');
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    {isDemoMode && <DemoBanner />}
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
