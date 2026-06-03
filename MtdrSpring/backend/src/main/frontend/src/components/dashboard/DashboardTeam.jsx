@@ -5,6 +5,7 @@ import { MOCK_TEAMS } from './dashboardMocks';
 import DashboardKpiStrip from './DashboardKpiStrip';
 import { DashboardListViewSkeleton } from './DashboardSkeletons';
 import { useToast } from '../ui/ToastProvider';
+import { useOracleUser } from '../../hooks/useOracleUser';
 
 function initialsFromName(name) {
   const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
@@ -15,6 +16,7 @@ function initialsFromName(name) {
 
 function DashboardTeam() {
   const { showSuccess, showError } = useToast();
+  const { displayName: inviterName, email: inviterEmail } = useOracleUser();
   const [loading, setLoading] = useState(true);
   const [teams, setTeams] = useState([]);
   const [users, setUsers] = useState([]);
@@ -92,41 +94,53 @@ function DashboardTeam() {
       showError('Invite requires name and email.');
       return;
     }
-    const payload = {
-      name,
-      email,
-      telegramId: email.split('@')[0],
-      role: 'DEVELOPER',
-      workMode: 'REMOTE',
-      isActive: 1,
-      passwordHash: 'temporary',
-    };
-    const response = await fetch('/adduser', {
+    const response = await fetch('/invite-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        name,
+        email,
+        role: 'DEVELOPER',
+        workMode: 'REMOTE',
+        invitedByName: inviterName || undefined,
+        invitedByEmail: inviterEmail || undefined,
+        teamName: teamForm.name.trim() || undefined,
+        appOrigin: window.location.origin,
+      }),
     });
+    if (response.status === 409) {
+      showError('A user with this email already exists.');
+      return;
+    }
     if (!response.ok) {
       showError('Could not invite developer.');
       return;
     }
+    const invited = await response.json();
+    const created = invited.user;
     const usersRes = await fetch('/users');
     if (usersRes.ok) {
-      const updatedUsers = await usersRes.json();
-      setUsers(updatedUsers);
-      const created =
-        [...updatedUsers]
-          .reverse()
-          .find((u) => u.email?.toLowerCase() === email.toLowerCase()) || null;
-      if (created?.id) {
-        setTeamForm((prev) => ({
-          ...prev,
-          memberIds: [...new Set([...prev.memberIds.map(String), String(created.id)])],
-        }));
-      }
+      setUsers(await usersRes.json());
+    }
+    if (created?.id) {
+      setTeamForm((prev) => ({
+        ...prev,
+        memberIds: [...new Set([...prev.memberIds.map(String), String(created.id)])],
+      }));
     }
     setInviteForm({ name: '', email: '' });
-    showSuccess(`${name} was invited and added to the team.`);
+    const passwordHint = invited.temporaryPassword
+      ? ` Temporary password: ${invited.temporaryPassword}`
+      : '';
+    const authHint = invited.authAccountCreated === false
+      ? ' (Oracle only — start auth-server for web login.)'
+      : '';
+    const emailHint = invited.inviteEmailSent
+      ? ' Invitation email sent.'
+      : invited.inviteEmailError
+        ? ` Email failed: ${invited.inviteEmailError}`
+        : ' Email not sent (Lumen mail service not configured on server).';
+    showSuccess(`${name} was invited.${passwordHint}${emailHint}${authHint}`);
   };
 
   const createTeam = async (event) => {

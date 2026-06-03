@@ -124,6 +124,27 @@ function handleDemoRequest(pathname, method, init) {
     return jsonResponse({ id: 99, name: 'Demo user' }, 201);
   }
 
+  if (pathname === '/invite-user' && method === 'POST') {
+    return jsonResponse(
+      {
+        user: { id: 99, name: 'Demo user', email: 'demo@lumen.dev', role: 'DEVELOPER' },
+        temporaryPassword: 'DemoPass123',
+        authAccountCreated: true,
+        inviteEmailSent: true,
+      },
+      201
+    );
+  }
+
+  if (pathname === '/users/by-email' && method === 'GET') {
+    return jsonResponse({
+      id: 1,
+      name: 'Alex Rivera',
+      email: 'alex@lumen.dev',
+      role: 'DEVELOPER',
+    });
+  }
+
   if (pathname === '/api/genai/chat' && method === 'POST') {
     return jsonResponse({
       reply:

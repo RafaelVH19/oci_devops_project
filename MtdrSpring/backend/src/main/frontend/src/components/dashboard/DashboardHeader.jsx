@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import HeaderAccountActions from '../ui/HeaderAccountActions';
 import { dashboardTopRowClassName } from '../../constants/dashboardTheme';
+import { isDemoMode } from '../../config/demoMode';
+import { useOracleUser } from '../../hooks/useOracleUser';
 
 const DEFAULT_USER = { firstName: 'Alex', initials: 'AR' };
 
@@ -28,12 +30,23 @@ function formatToday() {
 }
 
 function DashboardHeader() {
+  const { displayName: oracleDisplayName, oracleUser } = useOracleUser();
   const [firstName, setFirstName] = useState(DEFAULT_USER.firstName);
   const [displayName, setDisplayName] = useState('Alex Rivera');
   const [initials, setInitials] = useState(DEFAULT_USER.initials);
   const today = formatToday();
 
   useEffect(() => {
+    if (isDemoMode) return;
+    const name = oracleUser?.name || oracleDisplayName;
+    if (!name) return;
+    setDisplayName(name);
+    setFirstName(getFirstName(name));
+    setInitials(getInitials(name));
+  }, [oracleUser, oracleDisplayName]);
+
+  useEffect(() => {
+    if (!isDemoMode) return undefined;
     let cancelled = false;
     (async () => {
       try {

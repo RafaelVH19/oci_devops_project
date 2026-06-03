@@ -1,4 +1,16 @@
-function InputField({ label, type, placeholder, id, variant = 'boxed', centered = false }) {
+function InputField({
+  label,
+  type,
+  placeholder,
+  id,
+  name,
+  value,
+  onChange,
+  required = false,
+  autoComplete,
+  variant = 'boxed',
+  centered = false,
+}) {
   const inputId = id ?? label.toLowerCase().replace(/\s+/g, '-');
 
   if (variant === 'underline') {
@@ -12,8 +24,13 @@ function InputField({ label, type, placeholder, id, variant = 'boxed', centered 
         </label>
         <input
           id={inputId}
+          name={name ?? inputId}
           type={type}
           placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          required={required}
+          autoComplete={autoComplete}
           className={`w-full border-0 border-b border-[#2a1814]/20 bg-transparent py-2.5 text-[#2a1814] placeholder:text-[#2a1814]/35 focus:border-[#2a1814] focus:outline-none focus:ring-0 ${centered ? 'text-center' : ''}`}
         />
       </div>
@@ -27,8 +44,13 @@ function InputField({ label, type, placeholder, id, variant = 'boxed', centered 
       </label>
       <input
         id={inputId}
+        name={name ?? inputId}
         type={type}
         placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        required={required}
+        autoComplete={autoComplete}
         className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-200"
       />
     </div>

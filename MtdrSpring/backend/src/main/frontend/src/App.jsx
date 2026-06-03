@@ -17,6 +17,8 @@ import AppToast from './components/ui/AppToast';
 import HeaderAccountActions from './components/ui/HeaderAccountActions';
 import EditTaskModal from './components/dev/EditTaskModal';
 import { useAppToast } from './hooks/useAppToast';
+import { useOracleUser } from './hooks/useOracleUser';
+import { isDemoMode } from './config/demoMode';
 import { DEV_STATUS_OPTIONS, nextStatus, updateTask } from './components/dev/devTaskApi';
 
 const BACKLOG_KEY = 'backlog';
@@ -85,6 +87,7 @@ function sortSprints(sprintList, currentSprint) {
 }
 
 function App() {
+  const { displayName: oracleDisplayName, oracleUser } = useOracleUser();
   const [isLoading, setLoading] = useState(true);
   const [isInserting, setInserting] = useState(false);
   const [items, setItems] = useState([]);
@@ -104,6 +107,15 @@ function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
+
+  useEffect(() => {
+    if (isDemoMode) return;
+    const userName = oracleUser?.name || oracleDisplayName;
+    if (!userName) return;
+    setDisplayName(userName);
+    setFirstName(userName.split(/\s+/)[0] || 'Alex');
+    setInitials(getInitials(userName));
+  }, [oracleUser, oracleDisplayName]);
 
   const getSprintTasks = (sprintId) => items.filter((item) => item.sprint?.id === sprintId);
   const unassignedTasks = useMemo(() => items.filter((item) => !item.sprint?.id), [items]);
@@ -239,25 +251,27 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const [tasksResponse, sprintsResponse, usersResponse] = await Promise.all([
+        const [tasksResponse, sprintsResponse] = await Promise.all([
           fetch(API_LIST),
           fetch('/sprints'),
-          fetch('/users'),
         ]);
         if (!tasksResponse.ok) throw new Error('Could not load tasks');
 
         const tasks = await tasksResponse.json();
         const sprintResult = sprintsResponse.ok ? await sprintsResponse.json() : [];
-        const users = usersResponse.ok ? await usersResponse.json() : [];
 
         if (cancelled) return;
         setItems(tasks);
         setSprints(sprintResult);
 
-        const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
-        setDisplayName(userName);
-        setFirstName(userName.split(/\s+/)[0] || 'Alex');
-        setInitials(getInitials(userName));
+        if (isDemoMode) {
+          const usersResponse = await fetch('/users');
+          const users = usersResponse.ok ? await usersResponse.json() : [];
+          const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
+          setDisplayName(userName);
+          setFirstName(userName.split(/\s+/)[0] || 'Alex');
+          setInitials(getInitials(userName));
+        }
 
         const current = determineCurrentSprint(sprintResult);
         setCurrentSprint(current);

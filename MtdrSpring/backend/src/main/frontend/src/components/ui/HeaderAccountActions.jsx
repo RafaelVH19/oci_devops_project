@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Home, LayoutDashboard, ListTodo, LogOut } from 'lucide-react';
+import { isDemoMode } from '../../config/demoMode';
+import { useOracleUser } from '../../hooks/useOracleUser';
+import { signOut } from '../../lib/auth-client';
 
 const DEFAULT_USER = { displayName: 'Alex Rivera', initials: 'AR' };
 
@@ -26,6 +29,7 @@ export default function HeaderAccountActions({
   hoverClass = 'hover:bg-[#2A1814]/[0.04]',
 }) {
   const navigate = useNavigate();
+  const { displayName: sessionDisplayName, oracleUser, role: oracleRole } = useOracleUser();
   const profileMenuRef = useRef(null);
   const notificationsRef = useRef(null);
   const [displayName, setDisplayName] = useState(displayNameProp ?? DEFAULT_USER.displayName);
@@ -33,7 +37,14 @@ export default function HeaderAccountActions({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  const roleLabel = variant === 'manager' ? 'Manager' : 'Developer';
+  const roleLabel =
+    oracleRole === 'MANAGER'
+      ? 'Manager'
+      : oracleRole === 'DEVELOPER'
+        ? 'Developer'
+        : variant === 'manager'
+          ? 'Manager'
+          : 'Developer';
   const notificationsHint =
     variant === 'manager'
       ? "You're all caught up. Team, sprint, and task alerts will show here."
@@ -48,26 +59,12 @@ export default function HeaderAccountActions({
   }, [initialsProp]);
 
   useEffect(() => {
-    if (displayNameProp && initialsProp) return undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/users');
-        if (!res.ok || cancelled) return;
-        const users = await res.json();
-        const primary = users?.[0];
-        if (!primary || cancelled) return;
-        const name = primary.name || primary.username || DEFAULT_USER.displayName;
-        if (!displayNameProp) setDisplayName(name);
-        if (!initialsProp) setInitials(getInitials(name));
-      } catch {
-        /* keep defaults */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [displayNameProp, initialsProp]);
+    if (displayNameProp) return;
+    const name =
+      oracleUser?.name || sessionDisplayName || DEFAULT_USER.displayName;
+    setDisplayName(name);
+    if (!initialsProp) setInitials(getInitials(name));
+  }, [oracleUser, sessionDisplayName, displayNameProp, initialsProp]);
 
   useEffect(() => {
     if (!profileMenuOpen) return undefined;
@@ -187,8 +184,11 @@ export default function HeaderAccountActions({
               type="button"
               role="menuitem"
               className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-[#2A1814] transition hover:bg-[#faf9f6]"
-              onClick={() => {
+              onClick={async () => {
                 setProfileMenuOpen(false);
+                if (!isDemoMode) {
+                  await signOut();
+                }
                 navigate('/login');
               }}
             >
