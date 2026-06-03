@@ -1,8 +1,21 @@
 # Copia este archivo como application-local.properties (misma carpeta).
 # Ese archivo está en .gitignore y no se sube al repositorio.
-#
-# cp application-local.properties.example application-local.properties
-# (PowerShell) Copy-Item application-local.properties.example application-local.properties
 
 TELEGRAM_KEY=tu_token_de_botfather
 GROQ_API_KEY=gsk_tu_clave_de_groq
+
+INVITE_API_SECRET=dev-invite-secret-change-me
+AUTH_SERVER_URL=http://localhost:3001
+
+# Correo de Lumen (Resend — https://resend.com)
+RESEND_API_KEY=re_xxxxxxxx
+
+# Sin dominio propio (proyecto escolar): usa el remitente de prueba de Resend.
+# El destinatario verá "Lumen Invites" como nombre, no tu Gmail.
+LUMEN_MAIL_FROM=Lumen Invites <onboarding@resend.dev>
+
+# Solo si verificas un dominio en Resend (ej. lumen.com):
+# LUMEN_MAIL_FROM=Lumen Invites <invites@lumen.com>
+
+# Producción (opcional): URL pública de la app para el botón del correo
+# LUMEN_PUBLIC_URL=https://tu-dominio.com

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're invited to Lumen</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f3f0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2a1814;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f5f3f0;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(42,24,20,0.08);">
+          <tr>
+            <td style="background:#2a1814;padding:28px 32px;">
+              <p style="margin:0;font-size:22px;font-weight:600;color:#ffffff;letter-spacing:-0.02em;">Lumen</p>
+              <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.72);">Team workspace invitation</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.5;">Hi {{inviteeName}},</p>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#4a403c;">
+                <strong>{{inviterName}}</strong> invited you to join
+                <strong>{{teamLabel}}</strong> on Lumen as <strong>{{roleLabel}}</strong>.
+              </p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;background:#faf9f6;border-radius:12px;border:1px solid rgba(42,24,20,0.08);">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6b6560;">Invitation details</p>
+                    <p style="margin:0 0 6px;font-size:14px;"><span style="color:#6b6560;">Invited by:</span> {{inviterName}} ({{inviterEmail}})</p>
+                    <p style="margin:0 0 6px;font-size:14px;"><span style="color:#6b6560;">Team:</span> {{teamName}}</p>
+                    <p style="margin:0;font-size:14px;"><span style="color:#6b6560;">Your role:</span> {{roleLabel}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 28px;">
+                <tr>
+                  <td style="border-radius:999px;background:#c74634;">
+                    <a href="{{loginUrl}}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Sign in to Lumen</a>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;border-radius:12px;border:1px dashed rgba(42,24,20,0.2);">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 10px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6b6560;">Your sign-in credentials</p>
+                    <p style="margin:0 0 6px;font-size:14px;font-family:ui-monospace,Consolas,monospace;"><span style="color:#6b6560;">Email:</span> {{inviteeEmail}}</p>
+                    <p style="margin:0;font-size:14px;font-family:ui-monospace,Consolas,monospace;"><span style="color:#6b6560;">Temporary password:</span> {{temporaryPassword}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:13px;line-height:1.5;color:#6b6560;">
+                If the button does not work, open this link in your browser:<br />
+                <a href="{{loginUrl}}" style="color:#c74634;word-break:break-all;">{{loginUrl}}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 28px;border-top:1px solid rgba(42,24,20,0.06);">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#9a928c;">
+                You received this email because {{inviterName}} added you to a team in Lumen.
+                If this was unexpected, you can ignore this message.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

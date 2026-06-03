@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight,
   ChevronDown,
   ChevronUp,
   Search,
@@ -12,10 +11,14 @@ import NewItem from './NewItem';
 import API_LIST from './API';
 import { DevAppSkeleton } from './components/dashboard/DashboardSkeletons';
 import DevTaskRow from './components/dev/DevTaskRow';
+import DevTaskCalendar from './components/dev/DevTaskCalendar';
+import DevLumiPromoToast from './components/dev/DevLumiPromoToast';
 import AppToast from './components/ui/AppToast';
 import HeaderAccountActions from './components/ui/HeaderAccountActions';
 import EditTaskModal from './components/dev/EditTaskModal';
 import { useAppToast } from './hooks/useAppToast';
+import { useOracleUser } from './hooks/useOracleUser';
+import { isDemoMode } from './config/demoMode';
 import { DEV_STATUS_OPTIONS, nextStatus, updateTask } from './components/dev/devTaskApi';
 
 const BACKLOG_KEY = 'backlog';
@@ -84,6 +87,7 @@ function sortSprints(sprintList, currentSprint) {
 }
 
 function App() {
+  const { displayName: oracleDisplayName, oracleUser } = useOracleUser();
   const [isLoading, setLoading] = useState(true);
   const [isInserting, setInserting] = useState(false);
   const [items, setItems] = useState([]);
@@ -103,6 +107,15 @@ function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState(null);
+
+  useEffect(() => {
+    if (isDemoMode) return;
+    const userName = oracleUser?.name || oracleDisplayName;
+    if (!userName) return;
+    setDisplayName(userName);
+    setFirstName(userName.split(/\s+/)[0] || 'Alex');
+    setInitials(getInitials(userName));
+  }, [oracleUser, oracleDisplayName]);
 
   const getSprintTasks = (sprintId) => items.filter((item) => item.sprint?.id === sprintId);
   const unassignedTasks = useMemo(() => items.filter((item) => !item.sprint?.id), [items]);
@@ -238,25 +251,27 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const [tasksResponse, sprintsResponse, usersResponse] = await Promise.all([
+        const [tasksResponse, sprintsResponse] = await Promise.all([
           fetch(API_LIST),
           fetch('/sprints'),
-          fetch('/users'),
         ]);
         if (!tasksResponse.ok) throw new Error('Could not load tasks');
 
         const tasks = await tasksResponse.json();
         const sprintResult = sprintsResponse.ok ? await sprintsResponse.json() : [];
-        const users = usersResponse.ok ? await usersResponse.json() : [];
 
         if (cancelled) return;
         setItems(tasks);
         setSprints(sprintResult);
 
-        const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
-        setDisplayName(userName);
-        setFirstName(userName.split(/\s+/)[0] || 'Alex');
-        setInitials(getInitials(userName));
+        if (isDemoMode) {
+          const usersResponse = await fetch('/users');
+          const users = usersResponse.ok ? await usersResponse.json() : [];
+          const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
+          setDisplayName(userName);
+          setFirstName(userName.split(/\s+/)[0] || 'Alex');
+          setInitials(getInitials(userName));
+        }
 
         const current = determineCurrentSprint(sprintResult);
         setCurrentSprint(current);
@@ -359,6 +374,19 @@ function App() {
       .finally(() => setInserting(false));
   }
 
+  function focusTaskFromCalendar(task) {
+    setHighlightedTaskId(task.id);
+    if (task.sprint?.id) {
+      setVisibleSprints((prev) => [...new Set([...prev, task.sprint.id])]);
+      setExpandedSprints((prev) => ({ ...prev, [task.sprint.id]: true }));
+    } else {
+      setExpandedSprints((prev) => ({ ...prev, [BACKLOG_KEY]: true }));
+    }
+    window.requestAnimationFrame(() => {
+      document.getElementById(`dev-task-${task.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+
   const orderedSprints = useMemo(() => sortSprints(sprints, currentSprint), [sprints, currentSprint]);
 
   const visibleCountText = `${visibleSprints.length} of ${sprints.length} sprints visible`;
@@ -371,7 +399,13 @@ function App() {
 
   return (
     <section className="dev-app-page app-scrollbar min-h-dvh min-h-screen w-full bg-[#faf9f6] text-[#2A1814]">
-      <div className="mx-auto max-w-6xl px-5 py-10 sm:px-6 lg:px-8">
+      <a
+        href="#dev-task-list"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-[#2A1814] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+      >
+        Skip to task list
+      </a>
+      <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 lg:px-8">
         <div className="dashboard-page-enter space-y-8">
           <header className="border-b border-[#2A1814]/[0.08] pb-6">
             <div className="dashboard-section-enter mb-6 flex items-center justify-between gap-4">
@@ -414,25 +448,6 @@ function App() {
 
           <div className="dashboard-section-enter" style={{ animationDelay: '100ms' }}>
             <NewItem addItem={addItem} isInserting={isInserting} sprints={sprints} />
-          </div>
-
-          <div
-            className="dashboard-section-enter flex flex-col gap-3 rounded-xl border border-[#2A1814]/[0.08] bg-[#fff8f6] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-            style={{ animationDelay: '120ms' }}
-          >
-            <div>
-              <p className="text-sm font-medium text-[#2A1814]">Need a hand with your sprint?</p>
-              <p className="mt-1 text-sm text-[#6B6560]">
-                Ask Lumi to break down work, triage bugs, or summarize what&apos;s left in your backlog.
-              </p>
-            </div>
-            <Link
-              to="/lumi"
-              className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-[#c74634] transition hover:text-[#a83a2b]"
-            >
-              Open Lumi
-              <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
 
           {isLoading ? (
@@ -546,6 +561,8 @@ function App() {
                 )}
               </section>
 
+              <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_min(100%,22rem)] xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <main id="dev-task-list" className="min-w-0" aria-label="Task list">
               {orderedSprints.length === 0 && unassignedTasks.length === 0 ? (
                 <div className="dashboard-section-enter py-10 text-center">
                   <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[#2A1814]/10 bg-[#fffdf9]">
@@ -657,6 +674,15 @@ function App() {
                   })}
                 </div>
               )}
+                </main>
+
+                <DevTaskCalendar
+                  tasks={items}
+                  sprints={sprints}
+                  onTaskSelect={focusTaskFromCalendar}
+                  formatStatusLabel={formatStatusLabel}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -670,6 +696,7 @@ function App() {
         onSaved={(updated) => handleTaskSaved(updated, 'Task updated')}
         onError={showError}
       />
+      <DevLumiPromoToast />
       <AppToast toast={toast} onDismiss={dismissToast} />
     </section>
   );

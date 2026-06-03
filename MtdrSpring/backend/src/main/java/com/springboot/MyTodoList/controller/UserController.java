@@ -1,5 +1,9 @@
 package com.springboot.MyTodoList.controller;
+
+import com.springboot.MyTodoList.dto.InviteUserRequest;
+import com.springboot.MyTodoList.dto.InviteUserResponse;
 import com.springboot.MyTodoList.model.User;
+import com.springboot.MyTodoList.service.UserInviteService;
 import com.springboot.MyTodoList.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -7,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @RestController
@@ -14,10 +19,28 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private UserInviteService userInviteService;
+
     //@CrossOrigin
     @GetMapping(value = "/users")
     public List<User> getAllUsers(){
         return userService.findAll();
+    }
+
+    @GetMapping(value = "/users/by-email")
+    public ResponseEntity<User> getUserByEmail(@RequestParam String email) {
+        return userService.findByEmail(email)
+                .map(user -> new ResponseEntity<>(user, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    @PostMapping(value = "/invite-user")
+    public ResponseEntity<InviteUserResponse> inviteUser(
+            @RequestBody InviteUserRequest request,
+            HttpServletRequest httpRequest) {
+        InviteUserResponse response = userInviteService.invite(request, httpRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     //@CrossOrigin
