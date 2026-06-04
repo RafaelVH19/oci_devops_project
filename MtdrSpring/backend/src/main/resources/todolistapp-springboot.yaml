@@ -45,9 +45,20 @@ spec:
     spec:
       containers:
         - name: todolistapp-springboot
-          image: %DOCKER_REGISTRY%/todolistapp-springboot:0.1
+          image: %DOCKER_REGISTRY%/todolistapp-springboot:%IMAGE_VERSION%
           imagePullPolicy: Always
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: AUTH_SERVER_URL
+              value: "http://lumen-auth-service:3001"
+            - name: LUMEN_PUBLIC_URL
+              value: "%LUMEN_PUBLIC_URL%"
+            - name: INVITE_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lumen-auth-secrets
+                  key: invite-api-secret
             - name: db_user
               value: "EQUIPO55"
             - name: db_url

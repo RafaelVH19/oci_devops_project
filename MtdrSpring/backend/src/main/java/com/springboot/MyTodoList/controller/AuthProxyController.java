@@ -9,12 +9,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -72,9 +73,17 @@ public class AuthProxyController {
                     .forEach(value -> builder.header(name, value));
         });
 
-        HttpResponse<byte[]> upstream = httpClient.send(
-                builder.build(),
-                HttpResponse.BodyHandlers.ofByteArray());
+        final HttpResponse<byte[]> upstream;
+        try {
+            upstream = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+        } catch (IOException e) {
+            String errorJson = String.format(
+                    "{\"error\":\"Auth server unreachable at %s. Run: docker compose up -d\"}",
+                    authServerUrl);
+            return ResponseEntity.status(502)
+                    .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                    .body(errorJson.getBytes(StandardCharsets.UTF_8));
+        }
 
         HttpHeaders responseHeaders = new HttpHeaders();
         upstream.headers().map().forEach((name, values) -> {

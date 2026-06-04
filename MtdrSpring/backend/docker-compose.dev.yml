@@ -1,0 +1,6 @@
+# Solo desarrollo: publica auth-server en el host para depuración y scripts directos.
+# No usar este archivo en producción.
+services:
+  auth-server:
+    ports:
+      - "3001:3001"

@@ -1,0 +1,89 @@
+# Better Auth — servicio interno (ClusterIP). No LoadBalancer en :3001.
+# Aplicar junto con todolistapp-springboot.yaml:
+#   kubectl apply -f todolistapp-auth-server.yaml
+#   kubectl apply -f todolistapp-springboot.yaml
+#
+# Crear secretos antes del deploy:
+#   kubectl create secret generic lumen-auth-secrets \
+#     --from-literal=better-auth-secret='...min-32-chars...' \
+#     --from-literal=invite-api-secret='...'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lumen-auth-service
+spec:
+  type: ClusterIP
+  selector:
+    app: lumen-auth-server
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lumen-auth-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lumen-auth-server-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lumen-auth-server
+  template:
+    metadata:
+      labels:
+        app: lumen-auth-server
+    spec:
+      containers:
+        - name: lumen-auth-server
+          image: %DOCKER_REGISTRY%/lumen-auth-server:%IMAGE_VERSION%
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3001
+          env:
+            - name: AUTH_SERVER_PORT
+              value: "3001"
+            # URL pública de la app (mismo host que el LoadBalancer de Spring)
+            - name: BETTER_AUTH_URL
+              value: "%LUMEN_PUBLIC_URL%"
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lumen-auth-secrets
+                  key: better-auth-secret
+            - name: INVITE_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lumen-auth-secrets
+                  key: invite-api-secret
+          volumeMounts:
+            - name: auth-data
+              mountPath: /app/data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 10
+      volumes:
+        - name: auth-data
+          persistentVolumeClaim:
+            claimName: lumen-auth-data

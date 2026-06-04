@@ -42,6 +42,37 @@ Then restart the auth server if it was already running (`npm run dev`).
 2. Spring Boot: port 8080
 3. Vite: `npm run dev` in `src/main/frontend` (proxies `/api/auth` → 3001)
 
+## Run with Docker Compose (recomendado)
+
+Auth y Spring en Docker (`backend/docker-compose.yml`). En **producción el :3001 no se publica**; en dev usa el override:
+
+```bash
+cd backend
+mvn clean package   # o verify
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+cd auth-server && npm run seed
+```
+
+- App: http://localhost:8080  
+- Auth interno: `http://auth-server:3001` (solo red Docker; Spring usa `AUTH_SERVER_URL`)  
+- `:3001` en el host solo con `docker-compose.dev.yml` (depuración / `reset-password`)  
+- `BETTER_AUTH_URL`: `http://localhost:8080` (lo que ve el navegador)
+
+`.\buildImgContainer.ps1` aplica el modo dev (incluye `docker-compose.dev.yml`).
+
+**Producción (OCI/K8s):** ver [../DEPLOY-AUTH.md](../DEPLOY-AUTH.md) — ClusterIP, sin LoadBalancer en 3001.
+
+## Run with Docker (solo Spring en contenedor)
+
+Spring en **:8080** proxies `/api/auth` a `http://host.docker.internal:3001`. Ahí el auth-server debe correr en el **host**:
+
+1. `auth-server/.env`: `BETTER_AUTH_URL=http://localhost:8080`
+2. `npm run dev` (puerto 3001)
+3. Contenedor Spring
+4. `npm run seed`
+
+Sin auth en el host, login devuelve 502.
+
 ## Manager invite
 
 The dashboard calls Spring `POST /invite-user`, which:

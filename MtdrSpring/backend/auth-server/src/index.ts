@@ -12,6 +12,10 @@ const trustedOrigins = [
   'http://localhost:5173',
   'http://localhost:8080',
   process.env.BETTER_AUTH_URL,
+  ...(process.env.TRUSTED_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean),
 ].filter((origin): origin is string => Boolean(origin));
 
 app.use(

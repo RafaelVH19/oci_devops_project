@@ -2,12 +2,19 @@ package com.springboot.MyTodoList.service;
 
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +26,12 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     public List<User> findAll() {
         return userRepository.findAll();
@@ -41,7 +54,57 @@ public class UserService {
 
     public User addUser(User newUser) {
         encodePasswordIfNeeded(newUser);
-        return userRepository.save(newUser);
+        try {
+            return userRepository.save(newUser);
+        } catch (DataIntegrityViolationException ex) {
+            if (isOracleIdIdentityOutOfSync(ex)) {
+                return insertUserWithExplicitId(newUser);
+            }
+            throw ex;
+        }
+    }
+
+    /**
+     * Oracle IDENTITY can stay at 1 while rows already use higher IDs (shared dev DB).
+     * Hibernate always inserts id=DEFAULT, so we assign MAX(id)+1 explicitly when that fails.
+     */
+    private User insertUserWithExplicitId(User newUser) {
+        if (newUser.getCreatedAt() == null) {
+            newUser.setCreatedAt(LocalDateTime.now());
+        }
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return tx.execute(status -> {
+            Long nextId = userRepository.findNextAvailableId();
+            entityManager.createNativeQuery(
+                            """
+                            INSERT INTO users (id, name, email, telegram_id, role, work_mode, is_active, created_at, password_hash)
+                            VALUES (:id, :name, :email, :telegramId, :role, :workMode, :isActive, :createdAt, :passwordHash)
+                            """)
+                    .setParameter("id", nextId)
+                    .setParameter("name", newUser.getName())
+                    .setParameter("email", newUser.getEmail())
+                    .setParameter("telegramId", newUser.getTelegramId())
+                    .setParameter("role", newUser.getRole())
+                    .setParameter("workMode", newUser.getWorkMode())
+                    .setParameter("isActive", newUser.getIsActive())
+                    .setParameter("createdAt", newUser.getCreatedAt())
+                    .setParameter("passwordHash", newUser.getPasswordHash())
+                    .executeUpdate();
+            newUser.setId(nextId);
+            return newUser;
+        });
+    }
+
+    private static boolean isOracleIdIdentityOutOfSync(DataIntegrityViolationException ex) {
+        String message = ex.getMostSpecificCause() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
+        if (message == null) {
+            return false;
+        }
+        return message.contains("ORA-00001")
+                && (message.contains("columns (ID)") || message.contains("(ID:"));
     }
 
     public User test() {

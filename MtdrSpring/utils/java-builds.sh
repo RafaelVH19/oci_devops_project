@@ -6,7 +6,7 @@
 set -e
 
 
-BUILDS="todolistapp-springboot"
+BUILDS="todolistapp-springboot lumen-auth-server"
 
 # Provision Repos
 #while ! state_done JAVA_REPOS; do
