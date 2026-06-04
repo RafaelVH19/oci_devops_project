@@ -5,8 +5,28 @@
 import 'dotenv/config';
 
 const springUrl = process.env.SPRING_URL ?? 'http://localhost:8080';
+const authServerUrl = process.env.AUTH_SERVER_URL ?? 'http://localhost:3001';
 const email = process.env.SEED_EMAIL ?? 'manager@lumen.dev';
 const name = process.env.SEED_NAME ?? 'Demo Manager';
+
+async function syncWebLogin(oracleUserId?: number) {
+  const secret = process.env.INVITE_API_SECRET ?? 'dev-invite-secret-change-me';
+  const password = process.env.SEED_PASSWORD ?? 'LumenDev1!';
+  const sync = await fetch(`${authServerUrl.replace(/\/$/, '')}/internal/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-invite-secret': secret,
+    },
+    body: JSON.stringify({ email, password, name, oracleUserId }),
+  });
+  if (sync.ok) {
+    console.log(`Web login password set to: ${password}`);
+    return true;
+  }
+  console.log('Could not sync auth password:', await sync.text());
+  return false;
+}
 
 async function main() {
   const res = await fetch(`${springUrl.replace(/\/$/, '')}/invite-user`, {
@@ -23,22 +43,7 @@ async function main() {
   if (res.status === 409) {
     console.log(`Oracle user already exists: ${email}`);
     console.log('Syncing web login password via auth-server…');
-    const authUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3001';
-    const secret = process.env.INVITE_API_SECRET ?? 'dev-invite-secret-change-me';
-    const password = process.env.SEED_PASSWORD ?? 'LumenDev1!';
-    const sync = await fetch(`${authUrl.replace(/\/$/, '')}/internal/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-invite-secret': secret,
-      },
-      body: JSON.stringify({ email, password, name }),
-    });
-    if (sync.ok) {
-      console.log(`Web login password set to: ${password}`);
-    } else {
-      console.log('Could not sync auth password:', await sync.text());
-    }
+    await syncWebLogin();
     return;
   }
 

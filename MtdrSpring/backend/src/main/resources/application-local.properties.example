@@ -5,6 +5,8 @@ TELEGRAM_KEY=tu_token_de_botfather
 GROQ_API_KEY=gsk_tu_clave_de_groq
 
 INVITE_API_SECRET=dev-invite-secret-change-me
+# Spring local (sin Docker): http://localhost:3001
+# Contenedor Docker (buildImgContainer): el contenedor usa host.docker.internal:3001 — auth-server debe estar en el host
 AUTH_SERVER_URL=http://localhost:3001
 
 # Correo de Lumen (Resend — https://resend.com)
@@ -18,4 +20,4 @@ LUMEN_MAIL_FROM=Lumen Invites <onboarding@resend.dev>
 # LUMEN_MAIL_FROM=Lumen Invites <invites@lumen.com>
 
 # Producción (opcional): URL pública de la app para el botón del correo
-# LUMEN_PUBLIC_URL=https://tu-dominio.com
+# LUMEN_PUBLIC_URL=http://<ip-load-balancer>   (en OCI suele ser IP, no dominio)

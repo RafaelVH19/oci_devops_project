@@ -45,13 +45,24 @@ spec:
     spec:
       containers:
         - name: todolistapp-springboot
-          image: %DOCKER_REGISTRY%/todolistapp-springboot:0.1
+          image: %DOCKER_REGISTRY%/todolistapp-springboot:%IMAGE_VERSION%
           imagePullPolicy: Always
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: AUTH_SERVER_URL
+              value: "http://lumen-auth-service:3001"
+            - name: LUMEN_PUBLIC_URL
+              value: "%LUMEN_PUBLIC_URL%"
+            - name: INVITE_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lumen-auth-secrets
+                  key: invite-api-secret
             - name: db_user
               value: "EQUIPO55"
             - name: db_url
-              value: "jdbc:oracle:thin:@reacttodophyvg_tp?TNS_ADMIN=/mtdrworkshop/creds"
+              value: "jdbc:oracle:thin:@mtdrbr2_tp?TNS_ADMIN=/mtdrworkshop/creds"
             - name: todo.table.name
               value: "todoitem"
             - name: driver_class_name
