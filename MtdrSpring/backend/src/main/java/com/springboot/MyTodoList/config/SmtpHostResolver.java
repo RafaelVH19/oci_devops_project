@@ -8,6 +8,10 @@ import java.util.Map;
  */
 public final class SmtpHostResolver {
 
+    /**
+     * Predefined SMTP configurations for common
+     * email service providers.
+     */
     private static final Map<String, SmtpPreset> BY_DOMAIN = Map.ofEntries(
             Map.entry("gmail.com", new SmtpPreset("smtp.gmail.com", 587, true, true, false)),
             Map.entry("googlemail.com", new SmtpPreset("smtp.gmail.com", 587, true, true, false)),
@@ -24,6 +28,13 @@ public final class SmtpHostResolver {
     private SmtpHostResolver() {
     }
 
+    /**
+     * Resolves SMTP configuration settings based on
+     * the sender's email address domain.
+     *
+     * If no predefined provider is found, a default
+     * SMTP host is generated using the email domain.
+     */
     public static SmtpPreset resolve(String fromEmail) {
         String domain = domainFromEmail(fromEmail);
         if (domain != null && BY_DOMAIN.containsKey(domain)) {
@@ -31,7 +42,11 @@ public final class SmtpHostResolver {
         }
         return new SmtpPreset("smtp." + (domain != null ? domain : "localhost"), 587, true, true, false);
     }
-
+    
+    /**
+     * Extracts and normalizes the domain portion
+     * of an email address.
+     */
     public static String domainFromEmail(String email) {
         if (email == null || !email.contains("@")) {
             return null;

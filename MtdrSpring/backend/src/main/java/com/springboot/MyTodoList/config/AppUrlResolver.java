@@ -15,6 +15,11 @@ public class AppUrlResolver {
     @Value("${lumen.public-url:}")
     private String configuredPublicUrl;
 
+    /**
+     * Determines the application's base URL using:
+     * configured URL, client origin, request headers,
+     * or localhost as a fallback.
+     */
     public String resolveBaseUrl(HttpServletRequest request, String clientOrigin) {
         if (configuredPublicUrl != null && !configuredPublicUrl.isBlank()) {
             return trimTrailingSlash(configuredPublicUrl);
@@ -40,10 +45,17 @@ public class AppUrlResolver {
         return "http://localhost:8080";
     }
 
+    /**
+     * Builds the login page URL based on the resolved base URL.
+     */
     public String resolveLoginUrl(HttpServletRequest request, String clientOrigin) {
         return resolveBaseUrl(request, clientOrigin) + "/login";
     }
 
+    /**
+     * Builds the base URL from forwarded proxy headers
+     * or host information contained in the request.
+     */
     private static String forwardedBaseUrl(HttpServletRequest request) {
         String host = request.getHeader("X-Forwarded-Host");
         if (host == null || host.isBlank()) {
@@ -59,6 +71,10 @@ public class AppUrlResolver {
         return trimTrailingSlash(proto + "://" + host.split(",")[0].trim());
     }
 
+    /**
+     * Extracts the origin (protocol, host and port)
+     * from a Referer header value.
+     */
     private static String originFromReferer(String referer) {
         if (referer == null || referer.isBlank()) {
             return null;
@@ -78,6 +94,9 @@ public class AppUrlResolver {
         }
     }
 
+    /**
+     * Removes trailing slash characters from a URL.
+     */
     private static String trimTrailingSlash(String url) {
         String trimmed = url.trim();
         while (trimmed.endsWith("/")) {

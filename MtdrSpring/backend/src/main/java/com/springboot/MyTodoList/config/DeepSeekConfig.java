@@ -7,17 +7,30 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configures HTTP components required to communicate
+ * with the DeepSeek AI API.
+ */
 @Configuration
 public class DeepSeekConfig {
     
     @Value("${deepseek.api.key}")
     private String apiKey;
 
+    /**
+     * Creates and exposes a reusable HTTP client bean
+     * for sending requests to external services.
+     */
     @Bean
     public CloseableHttpClient httpClient() {
         return HttpClients.createDefault();
     }
 
+    /**
+     * Creates a preconfigured HTTP POST request for the
+     * DeepSeek API including required headers such as
+     * content type and authorization token.
+     */
     @Bean
     public HttpPost deepSeekRequest(@Value("${deepseek.api.url}") String apiUrl) {
         HttpPost request = new HttpPost(apiUrl);
