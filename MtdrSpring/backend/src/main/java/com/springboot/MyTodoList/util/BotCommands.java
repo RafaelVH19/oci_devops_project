@@ -1,5 +1,8 @@
 package com.springboot.MyTodoList.util;
 
+/**
+ * Defines all commands supported by the Telegram bot.
+ */
 public enum BotCommands {
 
 	START_COMMAND("/start"), 
@@ -15,10 +18,13 @@ public enum BotCommands {
 
 	private final String command;
 
+
+	/** Creates a command enum value. */
 	BotCommands(String enumCommand) {
 		this.command = enumCommand;
 	}
 
+	/** Returns the string representation of the command. */
 	public String getCommand() {
 		return command;
 	}

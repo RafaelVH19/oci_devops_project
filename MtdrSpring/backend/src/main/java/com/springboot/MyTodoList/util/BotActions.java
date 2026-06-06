@@ -25,6 +25,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+/**
+ * Handles all Telegram bot actions and commands.
+ *
+ * This class acts as the main controller for user interactions,
+ * processing Telegram messages and executing operations related
+ * to task management, sprint management, team management, KPI
+ * reporting, and AI-assisted project queries.
+ *
+ * It coordinates communication between the Telegram API and
+ * the application's service layer.
+ */
 public class BotActions{
 
     private static final Logger logger = LoggerFactory.getLogger(BotActions.class);
@@ -44,6 +55,7 @@ public class BotActions{
     DeepSeekService deepSeekService;
     AgentOrchestrator agentOrchestrator;
 
+    /** Creates a new instance of the bot actions handler. */
     public BotActions(TelegramClient tc, TaskService ts, SprintService ss, SprintTaskService sts, UserService us, TeamService tms, TeamMemberService tmms, DeepSeekService ds, AgentOrchestrator ao) {
         telegramClient = tc;
         taskService = ts;
@@ -59,30 +71,39 @@ public class BotActions{
         exit  = false;
     }
 
+    /** Sets the incoming request text to be processed. */
     public void setRequestText(String cmd){
         requestText=cmd;
     }
 
+    /** Sets the chat ID for the incoming request. */
     public void setChatId(long chId){
         chatId=chId;
     }
 
+    /** Sets the Telegram user ID for the incoming request. */
     public void setTelegramUserId(Long tgUserId){
         telegramUserId = tgUserId;
     }
 
+    /** Sets the Telegram client for sending messages. */
     public void setTelegramClient(TelegramClient tc){
         telegramClient=tc;
     }
 
+    /** Sets the DeepSeek service for AI-assisted queries. */
     public void setDeepSeekService(DeepSeekService dssvc){
         deepSeekService = dssvc;
     }
 
+    /** Returns the DeepSeek service for AI-assisted queries. */
     public DeepSeekService getDeepSeekService(){
         return deepSeekService;
     }
 
+    /**
+     * Finds a registered user by Telegram identifier.
+     */
     private User findUserByTelegramId(String telegramId) {
         List<User> users = userService.findAll();
 
@@ -96,6 +117,9 @@ public class BotActions{
         return null;
     }
 
+    /**
+     * Finds a user by database identifier.
+     */
     private User findUserById(Long userId) {
         if (userId == null) {
             return null;
@@ -110,7 +134,12 @@ public class BotActions{
     }
 
     
-
+    /**
+     * Handles the /start command.
+     *
+     * Sends the welcome message and displays the
+     * list of available commands.
+     */
     public void fnStart() {
         if (!(requestText.equals(BotCommands.START_COMMAND.getCommand()) || requestText.equals(BotLabels.SHOW_MAIN_SCREEN.getLabel())) || exit) 
             return;
@@ -119,6 +148,12 @@ public class BotActions{
         exit = true;
     }
 
+    /**
+     * Handles the /register command.
+     *
+     * Registers the user if their Telegram ID is found
+     * in the system, otherwise sends an error message.
+     */
     public void fnRegister() {
         if (!requestText.startsWith(BotCommands.REGISTER_COMMAND.getCommand()) || exit) return;
 
@@ -146,6 +181,12 @@ public class BotActions{
         exit = true;
     }
 
+    /** 
+     * Handles the /addtask command.
+     *
+     * Parses the command parameters, creates a new task,
+     * and sends a confirmation or error message.
+     */
     public void fnAddTask() {
         if (!requestText.startsWith(BotCommands.ADD_TASK.getCommand()) || exit) return;
 
@@ -217,6 +258,7 @@ public class BotActions{
         exit = true;
     }
 
+    /** Parses a string to determine the task priority level. */
     private String extractQuotedValue(String value) {
         if (value == null) {
             throw new IllegalArgumentException("Valor nulo");
@@ -235,6 +277,9 @@ public class BotActions{
         return unquoted;
     }
 
+    /** Handles the /assigntask command. 
+     * Parses the command parameters, marks the task as in progress,
+     */
     public void fnAssignTask() {
         if (!requestText.startsWith(BotCommands.ASSIGN_TASK.getCommand()) || exit) return;
 
@@ -294,6 +339,12 @@ public class BotActions{
     }
 
 
+    /**
+     * Handles the /completetask command.
+     *
+     * Parses the command parameters, marks the task as complete,
+     * and sends a confirmation or error message.
+     */
     public void fnCompleteTask() {
         if (!requestText.startsWith(BotCommands.COMPLETE_TASK.getCommand()) || exit) return;
 
@@ -346,6 +397,10 @@ public class BotActions{
         exit = true;
     }
 
+    /** Handles the /deletetask command. 
+     * Parses the command parameters, deletes the task,
+     * and sends a confirmation or error message.
+     */
     public void fnDeleteTask() {
         if (!requestText.startsWith(BotCommands.DELETE_TASK.getCommand()) || exit) return;
 
@@ -398,6 +453,9 @@ public class BotActions{
         exit = true;
     }
 
+    /** Handles the /mytasks command. 
+     * Retrieves the list of tasks assigned to the user and sends it as a message.
+     */
     public void fnListTasks() {
         if (!requestText.startsWith(BotCommands.LIST_TASKS.getCommand()) || exit) return;
 
@@ -433,6 +491,10 @@ public class BotActions{
         exit = true;
     }
 
+    /** Handles the /teamkpis command. 
+     * Retrieves and calculates KPIs for a specified developer in the manager's team,
+     * then sends the KPIs as a message.
+     */
     public void fnTeamKpis() {
         if (!requestText.startsWith(BotCommands.TEAM_KPIS.getCommand()) || exit) return;
 
@@ -555,6 +617,9 @@ public class BotActions{
         exit = true;
     }
 
+    /** Handles the /teamtasks command. 
+     * Retrieves the list of tasks assigned to the manager's team and sends it as a message.
+     */
     public void fnTeamTasks() {
         if (!requestText.startsWith(BotCommands.TEAM_TASKS.getCommand()) || exit) return;
 
@@ -662,6 +727,9 @@ public class BotActions{
             + "  - Baja: " + lowPriorityDone;
         }
 
+    /** Handles the /llm command. 
+     * Sends the user's query to the DeepSeek service and returns the generated response.
+     */
     public void fnLLM() {
         if (!requestText.startsWith(BotCommands.LLM_REQ.getCommand()) || exit) return;
 
@@ -683,6 +751,7 @@ public class BotActions{
         exit = true;
     }
 
+    /** Parses the priority value and returns the corresponding TaskPriority enum. */
     private TaskPriority parsePriority(String value) {
         if (value == null || value.isBlank()) {
             return TaskPriority.MEDIUM;
@@ -702,7 +771,8 @@ public class BotActions{
                 return TaskPriority.MEDIUM;
         }
     }
-
+    
+    /** Handles any unrecognized commands by forwarding them to the AgentOrchestrator for AI processing. */
     public void fnElse() {
         if (exit) return;
 
@@ -727,6 +797,10 @@ public class BotActions{
         }
     }
 
+    /** Dispatches a derived command generated by the LLM. 
+     * Temporarily replaces the request text with the derived command and attempts to handle it.
+     * If the derived command is recognized and handled, returns true. Otherwise, restores the original request text and returns false.
+     */
     private boolean dispatchDerivedCommand(String derivedCommand) {
         String previousRequestText = requestText;
         boolean previousExit = exit;
@@ -753,12 +827,14 @@ public class BotActions{
 
         return handled;
     }
-
+    
+    /** Determines if a string resembles a command. */
     private boolean isCommandLike(String response) {
         String trimmed = response == null ? "" : response.trim();
         return trimmed.startsWith("/") && trimmed.matches("^/[a-zA-Z]+.*");
     }
 
+    /** Resolves a user ID from a string value. */
     private Long resolveUserId(String value, boolean allowCurrentUserFallback) {
         if (value == null || value.isBlank()) {
             return allowCurrentUserFallback ? resolveCurrentUserId() : null;
@@ -782,6 +858,7 @@ public class BotActions{
         return allowCurrentUserFallback ? resolveCurrentUserId() : null;
     }
 
+    /** Resolves a task ID from a string value. */
     private Long resolveTaskId(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -805,6 +882,7 @@ public class BotActions{
         return null;
     }
 
+    /** Resolves a sprint ID from a string value. */
     private Long resolveSprintId(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -828,6 +906,7 @@ public class BotActions{
         return null;
     }
 
+    /** Resolves the current user's ID. */
     private Long resolveCurrentUserId() {
         User user = findUserByTelegramId(String.valueOf(telegramUserId));
         return user != null ? user.getId() : null;

@@ -1,5 +1,9 @@
 package com.springboot.MyTodoList.util;
 
+/**
+ * Stores predefined messages used by the Telegram bot.
+ * Centralizing messages simplifies maintenance and localization.
+ */
 public enum BotMessages {
 	
 	WELCOME(
@@ -39,10 +43,12 @@ public enum BotMessages {
 
 	private String message;
 
+	/** Creates a message enum value. */
 	BotMessages(String enumMessage) {
 		this.message = enumMessage;
 	}
 
+	/** Returns the string representation of the message. */
 	public String getMessage() {
 		return message;
 	}
