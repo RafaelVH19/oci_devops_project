@@ -23,7 +23,7 @@ steps:
   - type: Command
     name: "Docker Login"
     command:  cd MtdrSpring;
-              oci os object get --bucket-name reacttodo-phyvg --name deployment_config.tgz --file deployment_config.tgz;
+              oci os object get --bucket-name equipo55-n6xne --name deployment_config.tgz --file deployment_config.tgz;
               tar -xzvf deployment_config.tgz;
               source env.sh;
               docker logout;
