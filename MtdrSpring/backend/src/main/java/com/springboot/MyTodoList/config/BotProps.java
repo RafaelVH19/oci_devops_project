@@ -18,14 +18,17 @@ public class BotProps {
 		return token;
 	}
 
+	/** Returns the Telegram bot name. */
     public String getName(){
 		return name;
 	}
 
+	/** Sets the Telegram bot token. */
     public void setToken(String tkn){
 		token = tkn;
 	}
 
+	/** Sets the Telegram bot name. */
     public void setName(String n){
 		name = n;
 	}
