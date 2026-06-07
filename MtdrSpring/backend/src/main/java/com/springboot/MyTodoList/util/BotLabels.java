@@ -1,5 +1,9 @@
 package com.springboot.MyTodoList.util;
 
+/**
+ * Defines labels used by the Telegram bot interface,
+ * including button texts and menu options.
+ */
 public enum BotLabels {
 	
 	SHOW_MAIN_SCREEN("Show Main Screen"), 
@@ -14,10 +18,12 @@ public enum BotLabels {
 
 	private String label;
 
+	/** Creates a label enum value. */
 	BotLabels(String enumLabel) {
 		this.label = enumLabel;
 	}
 
+	/** Returns the string representation of the label. */
 	public String getLabel() {
 		return label;
 	}

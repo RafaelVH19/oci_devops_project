@@ -8,10 +8,17 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 
+/**
+ * Utility class that provides helper methods
+ * for sending messages through Telegram.
+ */
 public class BotHelper {
 
 	private static final Logger logger = LoggerFactory.getLogger(BotHelper.class);
 
+	/**
+     * Sends a plain text message and removes any custom keyboard.
+     */
 	public static void sendMessageToTelegram(Long chatId, String text, TelegramClient bot) {
 
 		try {
@@ -33,6 +40,9 @@ public class BotHelper {
 		}
 	}
 
+	/**
+	 * Sends a text message with a custom reply keyboard.
+	 */
 	public static void sendMessageToTelegram(Long chatId, String text,TelegramClient bot, ReplyKeyboardMarkup rk ) {
 
 		try {
