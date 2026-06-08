@@ -69,9 +69,11 @@ app.post('/internal/users', async (c) => {
       },
     });
 
-    if (!createResult.error) {
-      return c.json({ user: createResult.data?.user ?? createResult.data, created: true }, 201);
+    if (createResult.error) {
+      return c.json({ error: createResult.error }, 400);
     }
+
+    return c.json({ user: createResult.data?.user ?? createResult.data, created: true }, 201);
   } catch {
     // User already exists — sync password below
   }
@@ -92,3 +94,5 @@ app.get('/health', (c) => c.json({ ok: true }));
 serve({ fetch: app.fetch, port }, () => {
   console.log(`Auth server listening on http://localhost:${port}`);
 });
+
+

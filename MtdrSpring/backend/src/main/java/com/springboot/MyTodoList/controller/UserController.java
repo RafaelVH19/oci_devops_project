@@ -10,9 +10,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+
+// New Imports for Security
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 
 @RestController
 public class UserController {
@@ -94,5 +99,13 @@ public class UserController {
         return userService.test();
     }
 
+    // New Secured Endpoint
+    @GetMapping("/api/secured/test")
+    @PreAuthorize("isAuthenticated()") // This annotation protects the endpoint
+    public ResponseEntity<String> getSecuredMessage() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = authentication.getName(); // This will be the email from the JWT
+        return ResponseEntity.ok("Hello, " + userEmail + "! You accessed a secured endpoint.");
+    }
 
 }
