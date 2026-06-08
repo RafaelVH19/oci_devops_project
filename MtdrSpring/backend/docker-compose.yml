@@ -43,6 +43,7 @@ services:
       AUTH_SERVER_URL: http://auth-server:3001
       INVITE_API_SECRET: ${INVITE_API_SECRET:-dev-invite-secret-change-me}
       LUMEN_PUBLIC_URL: ${LUMEN_PUBLIC_URL:-http://localhost:8080}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-local-lumen-auth-secret-min-32-chars}
 
 volumes:
   auth-sqlite:
