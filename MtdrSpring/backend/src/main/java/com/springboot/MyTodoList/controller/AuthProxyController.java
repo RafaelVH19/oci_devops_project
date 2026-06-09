@@ -19,8 +19,11 @@ import java.util.Collections;
 import java.util.Set;
 
 /**
- * Proxies /api/auth to the Better Auth server so the SPA works from Docker (:8080)
- * without a separate Vite dev proxy.
+ * Controlador proxy encargado de reenviar todas las solicitudes
+ * dirigidas a /api/auth hacia el servidor de autenticación externo.
+ *
+ * Permite que la aplicación frontend y backend trabajen bajo el mismo
+ * dominio sin necesidad de configurar un proxy adicional.
  */
 @RestController
 public class AuthProxyController {
@@ -40,6 +43,13 @@ public class AuthProxyController {
     @Value("${auth.server.url:http://localhost:3001}")
     private String authServerUrl;
 
+    /**
+     * Reenvía una solicitud HTTP al servidor de autenticación configurado.
+     *
+     * Copia encabezados, método HTTP, parámetros de consulta y cuerpo
+     * de la solicitud original, devolviendo la respuesta obtenida
+     * desde el servidor de autenticación.
+     */
     @RequestMapping("/api/auth/**")
     public ResponseEntity<byte[]> proxyAuth(
             HttpServletRequest request,

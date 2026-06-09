@@ -23,6 +23,12 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+/**
+ * Controlador principal del bot de Telegram.
+ *
+ * Recibe mensajes enviados por los usuarios y delega
+ * su procesamiento a la clase BotActions.
+ */
 @Component
 public class ToDoItemBotController  implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
@@ -44,6 +50,7 @@ public class ToDoItemBotController  implements SpringLongPollingBot, LongPolling
 	private String telegramBotToken;
 
 
+	//** Obtiene el token del bot de Telegram */
 	@Override
     public String getBotToken() {
 		if(telegramBotToken != null && !telegramBotToken.trim().isEmpty()){
@@ -53,7 +60,7 @@ public class ToDoItemBotController  implements SpringLongPollingBot, LongPolling
 		}
     }
 
-
+	//** Inicializa el controlador del bot de Telegram y sus dependencias */
 	public ToDoItemBotController(BotProps bp, TaskService ts, SprintService ss, SprintTaskService sts, UserService us, TeamService tms, TeamMemberService tmms, DeepSeekService ds, AgentOrchestrator ao) {
 		this.botProps = bp;
 		telegramClient = new OkHttpTelegramClient(getBotToken());
@@ -67,11 +74,13 @@ public class ToDoItemBotController  implements SpringLongPollingBot, LongPolling
 		agentOrchestrator = ao;
 	}
 
+	//** Devuelve el consumidor encargado de procesar las actualizaciones recibidas desde Telegram */
 	@Override
     public LongPollingUpdateConsumer getUpdatesConsumer() {
         return this;
     }
 
+	//** Procesa un mensaje recibido desde Telegram y ejecuta las acciones correspondientes */
 	@Override
 	public void consume(Update update) {
 
@@ -104,6 +113,7 @@ public class ToDoItemBotController  implements SpringLongPollingBot, LongPolling
 
 	}
 
+	//** Método ejecutado automáticamente después del registro del bot */
 	@AfterBotRegistration
     public void afterRegistration(BotSession botSession) {
         System.out.println("Registered bot running state is: " + botSession.isRunning());

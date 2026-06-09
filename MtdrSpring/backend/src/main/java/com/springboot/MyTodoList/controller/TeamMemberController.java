@@ -17,17 +17,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * Controlador encargado de administrar las relaciones
+ * entre usuarios y equipos.
+ */
 @RestController
 public class TeamMemberController {
 
     @Autowired
     private TeamMemberService teamMemberService;
 
+    /** Obtiene todas las relaciones usuario-equipo registradas */
     @GetMapping(value = "/team-members")
     public List<TeamMember> getAllTeamMembers() {
         return teamMemberService.findAll();
     }
 
+    /** Obtiene una relación usuario-equipo específica por sus IDs */
     @GetMapping(value = "/team-members/{teamId}/{userId}")
     public ResponseEntity<TeamMember> getTeamMemberById(@PathVariable Long teamId, @PathVariable Long userId) {
         TeamMemberId id = new TeamMemberId(teamId, userId);
@@ -39,6 +45,7 @@ public class TeamMemberController {
         return new ResponseEntity<>(response.getBody(), HttpStatus.OK);
     }
 
+    /** Registra una nueva relación usuario-equipo */
     @PostMapping(value = "/team-members")
     public ResponseEntity<TeamMember> addTeamMember(@RequestBody TeamMember teamMember) {
         TeamMember dbTeamMember = teamMemberService.add(teamMember);
@@ -51,6 +58,7 @@ public class TeamMemberController {
                 .body(dbTeamMember);
     }
 
+    /** Actualiza una relación usuario-equipo existente */
     @PutMapping(value = "/team-members/{teamId}/{userId}")
     public ResponseEntity<TeamMember> updateTeamMember(@RequestBody TeamMember teamMember,
                                                         @PathVariable Long teamId,
@@ -64,6 +72,7 @@ public class TeamMemberController {
         return new ResponseEntity<>(dbTeamMember, HttpStatus.OK);
     }
 
+    /** Elimina una relación usuario-equipo existente */
     @DeleteMapping(value = "/team-members/{teamId}/{userId}")
     public ResponseEntity<Boolean> deleteTeamMember(@PathVariable Long teamId, @PathVariable Long userId) {
         TeamMemberId id = new TeamMemberId(teamId, userId);
