@@ -21,10 +21,10 @@ import java.time.LocalDateTime;
  * Representa una tarea dentro del sistema de gestión de proyectos.
  *
  * Una tarea contiene información descriptiva, estado, prioridad,
- * responsable asignado y métricas relacionadas con el avance del trabajo.</p>
+ * responsable asignado y métricas relacionadas con el avance del trabajo.
  *
  * También permite almacenar información para análisis mediante IA,
- * así como datos de estimación y tiempo invertido.</p>
+ * así como datos de estimación y tiempo invertido.
  */
 @Entity
 @Table(name = "TASKS")

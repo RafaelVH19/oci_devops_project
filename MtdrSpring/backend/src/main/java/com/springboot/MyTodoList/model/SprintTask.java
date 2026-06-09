@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * almacenando además información temporal sobre cuándo fue agregada
  * o removida.
  *
- * Implementa una relación muchos a muchos mediante una clave compuesta.</p>
+ * Implementa una relación muchos a muchos mediante una clave compuesta.
  */
 @Entity
 @Table(name = "SPRINT_TASKS")

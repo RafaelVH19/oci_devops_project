@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * Representa un equipo de trabajo dentro de la organización.
  *
  * Un equipo está conformado por varios usuarios y posee un líder
- * o responsable identificado mediante el atributo managerId.</p>
+ * o responsable identificado mediante el atributo managerId.
  */
 @Entity
 @Table(name = "TEAMS")

@@ -14,10 +14,10 @@ import java.time.LocalDateTime;
  * Representa un Sprint dentro de la metodología ágil Scrum.
  *
  * Un Sprint define un período de tiempo limitado durante el cual se
- * desarrollan y completan tareas específicas del proyecto.</p>
+ * desarrollan y completan tareas específicas del proyecto.
  *
  * La entidad almacena información relacionada con su nombre,
- * fechas de inicio y fin, así como la fecha de creación.</p>
+ * fechas de inicio y fin, así como la fecha de creación.
  */
 @Entity
 @Table(name = "SPRINTS")

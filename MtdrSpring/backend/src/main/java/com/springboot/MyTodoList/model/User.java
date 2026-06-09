@@ -16,10 +16,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Representa un usuario registrado dentro de la plataforma.
  *
  * La entidad almacena información personal, credenciales,
- * configuración laboral y datos de integración con Telegram.</p>
+ * configuración laboral y datos de integración con Telegram.
  *
  * También permite controlar el estado de activación de la cuenta
- * y registrar la fecha de creación.</p>
+ * y registrar la fecha de creación.
  */
 @Entity
 @Table(name = "USERS")

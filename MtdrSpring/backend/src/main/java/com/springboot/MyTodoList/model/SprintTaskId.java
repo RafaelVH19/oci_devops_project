@@ -10,7 +10,7 @@ import java.util.Objects;
  * Clave primaria compuesta utilizada por la entidad SprintTask.
  *
  * La combinación de Sprint y Tarea identifica de manera única
- * una relación entre ambos elementos.</p>
+ * una relación entre ambos elementos.
  */
 @Embeddable
 public class SprintTaskId implements Serializable {

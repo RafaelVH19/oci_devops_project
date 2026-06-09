@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * generada por el sistema y el estado de ejecución.
  *
  * Su propósito principal es proporcionar trazabilidad, auditoría y soporte
- * para el análisis de uso del bot.</p>
+ * para el análisis de uso del bot.
  */
 @Entity
 @Table(name = "BOT_COMMAND_LOGGING")

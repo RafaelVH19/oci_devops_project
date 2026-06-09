@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
  * Entidad que representa la pertenencia de un usuario a un equipo.
  *
  * Implementa una relación muchos a muchos entre usuarios
- * y equipos mediante una clave compuesta.</p>
+ * y equipos mediante una clave compuesta.
  */
 @Entity
 @Table(name = "TEAM_MEMBERS")
