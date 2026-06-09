@@ -17,6 +17,15 @@ import jakarta.persistence.Transient;
 
 import java.time.LocalDateTime;
 
+/**
+ * Representa una tarea dentro del sistema de gestión de proyectos.
+ *
+ * Una tarea contiene información descriptiva, estado, prioridad,
+ * responsable asignado y métricas relacionadas con el avance del trabajo.</p>
+ *
+ * También permite almacenar información para análisis mediante IA,
+ * así como datos de estimación y tiempo invertido.</p>
+ */
 @Entity
 @Table(name = "TASKS")
 public class Task {
@@ -67,9 +76,14 @@ public class Task {
     @Column(name = "IS_BUG", nullable = false)
     private Boolean isBug = false;
 
+    /** Constructor por defecto. */
     public Task() {
     }
 
+    /**
+     * Inicializa automáticamente valores por defecto antes
+     * de persistir la entidad.
+     */
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
@@ -83,119 +97,151 @@ public class Task {
         }
     }
 
+    /**
+     * Actualiza automáticamente la fecha de modificación
+     * cuando la entidad es actualizada.
+     */
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /** Obtiene el ID de la tarea. */
     public Long getId() {
         return id;
     }
 
+    /** Establece el ID de la tarea. */
     public void setId(Long id) {
         this.id = id;
     }
 
+    /** Obtiene el título de la tarea. */
     public String getTitle() {
         return title;
     }
 
+    /** Establece el título de la tarea. */
     public void setTitle(String title) {
         this.title = title;
     }
 
+    /** Obtiene la descripción de la tarea. */
     public String getDescription() {
         return description;
     }
 
+    /** Establece la descripción de la tarea. */
     public void setDescription(String description) {
         this.description = description;
     }
 
+    /** Obtiene el estado de la tarea. */
     public TaskStatus getStatus() {
         return status;
     }
 
+    /** Establece el estado de la tarea. */
     public void setStatus(TaskStatus status) {
         this.status = status;
     }
 
+    /** Obtiene la prioridad de la tarea. */
     public TaskPriority getPriority() {
         return priority;
     }
 
+    /** Establece la prioridad de la tarea. */
     public void setPriority(TaskPriority priority) {
         this.priority = priority;
     }
 
+    /** Obtiene el ID del usuario asignado a la tarea. */
     public Long getAssignedTo() {
         return assignedTo;
     }
 
+    /** Establece el ID del usuario asignado a la tarea. */
     public void setAssignedTo(Long assignedTo) {
         this.assignedTo = assignedTo;
     }
 
+    /** Obtiene el ID del usuario que creó la tarea. */
     public Long getCreatedBy() {
         return createdBy;
     }
 
+    /** Establece el ID del usuario que creó la tarea. */
     public void setCreatedBy(Long createdBy) {
         this.createdBy = createdBy;
     }
 
+    /** Obtiene la fecha de creación de la tarea. */
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
+    /** Establece la fecha de creación de la tarea. */
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
+    /** Obtiene la fecha de actualización de la tarea. */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
+    /** Establece la fecha de actualización de la tarea. */
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 
+    /** Obtiene la fecha de finalización de la tarea. */
     public LocalDateTime getCompletedDate() {
         return completedDate;
     }
 
+    /** Establece la fecha de finalización de la tarea. */
     public void setCompletedDate(LocalDateTime completedDate) {
         this.completedDate = completedDate;
     }
 
+    /** Obtiene el insight generado por IA para la tarea. */
     public float[] getInsight() {
         return insight;
     }
 
+    /** Establece el insight generado por IA para la tarea. */
     public void setInsight(float[] insight) {
         this.insight = insight;
     }
 
+    /** Obtiene las horas dedicadas a la tarea. */
     public Integer getHoursDone() {
         return hoursDone;
     }
 
+    /** Establece las horas dedicadas a la tarea. */
     public void setHoursDone(Integer hoursDone) {
         this.hoursDone = hoursDone;
     }
 
+    /** Obtiene las horas esperadas para la tarea. */
     public Integer getExpectedHours() {
         return expectedHours;
     }
 
+    /** Establece las horas esperadas para la tarea. */
     public void setExpectedHours(Integer expectedHours) {
         this.expectedHours = expectedHours;
     }
 
+    /** Obtiene si la tarea es un error. */
     public Boolean getIsBug() {
         return isBug;
     }
 
+    /** Establece si la tarea es un error. */
     public void setIsBug(Boolean isBug) {
         this.isBug = isBug;
     }
