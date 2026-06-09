@@ -23,6 +23,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
+/**
+ * Servicio encargado de interpretar mensajes de texto para identificar intenciones relacionadas con la gestión de equipos, proyectos y sprints.
+ *
+ * Proporciona métodos para analizar mensajes, extraer información relevante y ejecutar acciones en el sistema según las intenciones identificadas.
+ * Utiliza patrones de expresión regular para detectar comandos específicos y extraer detalles como nombres de equipos, proyectos, fechas, etc.
+ */
 @Service
 public class LumiActionService {
 
@@ -39,6 +45,7 @@ public class LumiActionService {
     private final SprintService sprintService;
     private final TaskService taskService;
 
+    /** Constructor para inyección de dependencias de los servicios necesarios para la ejecución de acciones relacionadas con equipos, proyectos y sprints. */
     public LumiActionService(UserService userService,
                              TeamService teamService,
                              TeamMemberService teamMemberService,
@@ -55,6 +62,7 @@ public class LumiActionService {
         this.taskService = taskService;
     }
 
+    /** Intenta manejar un mensaje y devuelve una opción con el resultado si se identifica una intención válida. */
     public Optional<String> tryHandle(String message) {
         if (message == null || message.isBlank()) {
             return Optional.empty();
@@ -78,6 +86,7 @@ public class LumiActionService {
         return Optional.empty();
     }
 
+    /** Normaliza un texto para facilitar la comparación, eliminando acentos y convirtiendo a minúsculas. */
     public Optional<String> executePlan(LumiActionPlan plan) {
         if (plan == null || !plan.isExecutable()) {
             return Optional.empty();
@@ -92,6 +101,7 @@ public class LumiActionService {
         };
     }
 
+    /** Normaliza un texto eliminando acentos y convirtiendo a minúsculas para facilitar la comparación. */
     private boolean matchesTeamIntent(String lower) {
         return lower.contains("create team")
             || lower.contains("crear team")
@@ -104,6 +114,7 @@ public class LumiActionService {
             || lower.contains("armar equipo");
     }
 
+    /** Verifica si el mensaje coincide con intenciones relacionadas con la creación de proyectos. */
     private boolean matchesProjectIntent(String lower) {
         return lower.contains("create project")
             || lower.contains("crear proyecto")
@@ -113,6 +124,7 @@ public class LumiActionService {
             || lower.contains("iniciar proyecto");
     }
 
+    /** Verifica si el mensaje coincide con intenciones relacionadas con la creación de sprints. */
     private boolean matchesSprintIntent(String lower) {
         return lower.contains("create sprint")
             || lower.contains("crear sprint")
@@ -122,6 +134,7 @@ public class LumiActionService {
             || lower.contains("planificar sprint");
     }
 
+    /** Verifica si el mensaje coincide con intenciones relacionadas con la consulta de carga de trabajo. */
     private boolean matchesWorkloadIntent(String lower) {
         return lower.contains("how much more work")
             || lower.contains("team doing this week")
@@ -131,6 +144,7 @@ public class LumiActionService {
             || lower.contains("horas restantes");
     }
 
+    /** Normaliza un texto eliminando acentos y convirtiendo a minúsculas para facilitar la comparación. */
     private String executeCreateTeam(LumiActionPlan plan) {
         if (plan.getTeamName() == null || plan.getTeamName().isBlank()) {
             return "What should the team be called, and who should be on it?";
@@ -146,6 +160,7 @@ public class LumiActionService {
         );
     }
 
+    /** Ejecuta la creación de un proyecto utilizando los datos proporcionados en el plan, verificando que se tenga el nombre del proyecto y el equipo fuente para copiar los miembros. */
     private String executeCreateProject(LumiActionPlan plan) {
         if (plan.getProjectName() == null || plan.getProjectName().isBlank()) {
             return "What should the project be called?";
@@ -156,6 +171,7 @@ public class LumiActionService {
         return handleCreateProjectFromData(plan.getProjectName(), plan.getSourceTeamName());
     }
 
+    /** Ejecuta la creación de un sprint utilizando los datos proporcionados en el plan, verificando que se tenga el nombre del sprint, el proyecto asociado y las fechas de inicio y fin. */
     private String executeCreateSprint(LumiActionPlan plan) {
         if (plan.getSprintName() == null || plan.getSprintName().isBlank()) {
             return "What should the sprint be called?";
@@ -174,6 +190,7 @@ public class LumiActionService {
         );
     }
 
+    /** Maneja la creación de un equipo utilizando los datos proporcionados, incluyendo el nombre del equipo, los miembros y el manager, y devuelve un mensaje de éxito o error según corresponda. */
     private String handleCreateTeamFromData(String teamName, List<String> memberNames, String managerNameHint) {
         List<User> users = userService.findAll();
         List<User> matched = findUsersByNames(users, memberNames);
@@ -186,6 +203,7 @@ public class LumiActionService {
         return successMessage("team", created.getName());
     }
 
+    /** Maneja la creación de un proyecto utilizando el nombre del proyecto y el nombre del equipo fuente para copiar los miembros, y devuelve un mensaje de éxito o error según corresponda. */
     private String handleCreateProjectFromData(String projectName, String sourceTeamHint) {
         List<TeamWithUsersResponse> teams = loadTeamsWithUsers();
         TeamWithUsersResponse sourceTeam = teams.stream()
@@ -223,6 +241,7 @@ public class LumiActionService {
         return successMessage("project", created.getName());
     }
 
+    /** Maneja la creación de un sprint utilizando el nombre del sprint, el nombre del proyecto asociado y las fechas de inicio y fin, y devuelve un mensaje de éxito o error según corresponda. */
     private String handleCreateSprintFromData(String sprintName, String projectHint, String startRaw, String endRaw) {
         List<TeamWithUsersResponse> teams = loadTeamsWithUsers();
         TeamWithUsersResponse project = teams.stream()
@@ -248,6 +267,7 @@ public class LumiActionService {
         return successMessage("sprint", sprint.getName());
     }
 
+    /** Agrega miembros a un equipo o proyecto dado su ID y un conjunto de IDs de usuarios, creando las asociaciones correspondientes en la base de datos. */
     private Team persistTeam(String teamName, User manager, List<User> matched) {
         Team team = new Team();
         team.setName(teamName.trim());
@@ -263,6 +283,14 @@ public class LumiActionService {
         return created;
     }
 
+    /** Agrega miembros a un equipo o proyecto dado su ID y un conjunto de IDs de usuarios, creando las asociaciones correspondientes en la base de datos. */
+    private void addMembers(Long teamId, Set<Long> memberIds) {
+        for (Long memberId : memberIds) {
+            teamService.addMember(teamId, memberId);
+        }
+    }
+
+    /** Resuelve el manager de un equipo basado en un hint de nombre y una lista de usuarios coincidentes. */
     private User resolveManagerFromHint(String managerNameHint, List<User> matched, List<User> allUsers) {
         if (managerNameHint != null && !managerNameHint.isBlank()) {
             List<User> fromHint = findUsersByNames(allUsers, List.of(managerNameHint));
@@ -276,6 +304,7 @@ public class LumiActionService {
             .orElse(matched.get(0));
     }
 
+    /** Devuelve un mensaje de éxito formateado para la creación de un equipo, proyecto o sprint, incluyendo el nombre del elemento creado y una indicación de dónde verlo en el dashboard. */
     private String successMessage(String kind, String name) {
         String where = switch (kind) {
             case "team" -> "Dashboard → Team";
@@ -285,6 +314,7 @@ public class LumiActionService {
         return "Done — \"" + name + "\" is saved. Open " + where + " to see it (no login required).";
     }
 
+    /** Devuelve una lista de nombres de desarrolladores disponibles en el workspace, limitando a los primeros 8 para evitar respuestas demasiado largas, y formateando el resultado como una cadena separada por comas. */
     private String listDeveloperNames() {
         List<User> users = userService.findAll();
         if (users.isEmpty()) {
@@ -297,6 +327,7 @@ public class LumiActionService {
             .orElse("");
     }
 
+    /** Devuelve una lista de nombres de equipos disponibles en el workspace, limitando a los primeros 8 para evitar respuestas demasiado largas, y formateando el resultado como una cadena separada por comas. */
     private String listTeamNames() {
         List<Team> teams = teamService.findAll();
         if (teams.isEmpty()) {
@@ -309,6 +340,7 @@ public class LumiActionService {
             .orElse("");
     }
 
+    /** Devuelve un nombre seguro para mostrar de un usuario, utilizando su nombre completo si está disponible, o su email si no lo está. */
     private String handleCreateTeam(String message) {
         List<User> users = userService.findAll();
         List<String> names = extractMemberNames(message);
@@ -329,6 +361,7 @@ public class LumiActionService {
         return successMessage("team", created.getName());
     }
 
+    /** Maneja la creación de un proyecto utilizando el nombre del proyecto y el nombre del equipo fuente para copiar los miembros, y devuelve un mensaje de éxito o error según corresponda. */
     private String handleCreateProject(String message) {
         List<TeamWithUsersResponse> teams = loadTeamsWithUsers();
         String projectName = firstMatch(message,
@@ -355,6 +388,7 @@ public class LumiActionService {
         return handleCreateProjectFromData(projectName, sourceTeam.getName());
     }
 
+    /** Maneja la creación de un sprint utilizando el nombre del sprint, el nombre del proyecto asociado y las fechas de inicio y fin, y devuelve un mensaje de éxito o error según corresponda. */
     private String handleCreateSprint(String message) {
         List<TeamWithUsersResponse> teams = loadTeamsWithUsers();
         String sprintName = firstMatch(message,
@@ -382,6 +416,7 @@ public class LumiActionService {
         );
     }
 
+    /** Maneja la consulta de carga de trabajo para esta semana, calculando las horas restantes, horas hechas y horas planificadas, y devolviendo un resumen formateado. */
     private String handleWorkload() {
         List<Task> tasks = taskService.findAll();
         long remainingHours = tasks.stream()
@@ -402,6 +437,7 @@ public class LumiActionService {
             + totalDone + "h done out of " + totalExpected + "h planned.";
     }
 
+    /** Resuelve el manager de un equipo basado en un hint de nombre y una lista de usuarios coincidentes, buscando primero por el hint explícito y luego por el rol de manager, devolviendo un usuario válido o el primer usuario coincidente si no se encuentra un manager específico. */
     private User resolveManager(String message, List<User> matched) {
         Matcher managerMatcher = MANAGER_PATTERN.matcher(message);
         if (managerMatcher.find()) {
@@ -423,6 +459,7 @@ public class LumiActionService {
         return roleManager.orElse(matched.get(0));
     }
 
+    /** Devuelve un mensaje de éxito formateado para la creación de un equipo, proyecto o sprint, incluyendo el nombre del elemento creado y una indicación de dónde verlo en el dashboard. */
     private String extractTeamName(String message, int teamCount) {
         String fromEnglish = firstMatch(message,
             Pattern.compile("create team\\s+(.+?)(?:\\s+with|\\s+managed|\\s+manager|$)", Pattern.CASE_INSENSITIVE));
@@ -437,6 +474,7 @@ public class LumiActionService {
         return "Team " + (teamCount + 1);
     }
 
+    /** Devuelve una lista de nombres de desarrolladores disponibles en el workspace, limitando a los primeros 8 para evitar respuestas demasiado largas, y formateando el resultado como una cadena separada por comas. */
     private List<String> extractMemberNames(String message) {
         Matcher withMatcher = Pattern.compile("(?:with|con)\\s+(.+)$", Pattern.CASE_INSENSITIVE).matcher(message);
         if (!withMatcher.find()) {
@@ -460,6 +498,7 @@ public class LumiActionService {
         return names;
     }
 
+    /** Encuentra usuarios que coincidan con una lista de nombres, buscando coincidencias parciales tanto en el nombre como en el email, y devolviendo una lista de usuarios coincidentes. */
     private List<User> findUsersByNames(List<User> users, List<String> names) {
         List<User> matched = new ArrayList<>();
         for (String name : names) {
@@ -478,6 +517,7 @@ public class LumiActionService {
         return matched;
     }
 
+    /** Carga los equipos junto con sus usuarios asociados, devolviendo una lista de respuestas que incluyen la información del equipo y un resumen de los usuarios que pertenecen a cada equipo. */
     private List<TeamWithUsersResponse> loadTeamsWithUsers() {
         List<Team> teams = teamService.findAll();
         List<TeamWithUsersResponse> response = new ArrayList<>();
@@ -495,6 +535,7 @@ public class LumiActionService {
         return response;
     }
 
+    /** Agrega miembros a un equipo o proyecto dado su ID y un conjunto de IDs de usuarios, creando las asociaciones correspondientes en la base de datos. */
     private void addMembers(Long teamId, Set<Long> memberIds) {
         for (Long memberUserId : memberIds) {
             TeamMember member = new TeamMember();
@@ -504,6 +545,7 @@ public class LumiActionService {
         }
     }
 
+    /** Devuelve un nombre seguro para mostrar de un usuario, utilizando su nombre completo si está disponible, o su email si no lo está. */
     private String firstMatch(String message, Pattern... patterns) {
         for (Pattern pattern : patterns) {
             Matcher matcher = pattern.matcher(message);
@@ -514,6 +556,7 @@ public class LumiActionService {
         return null;
     }
 
+    /** Parsea una fecha a partir de un texto, intentando varios formatos comunes y devolviendo un objeto LocalDateTime si se logra parsear correctamente, o null si no se puede interpretar la fecha. */
     private LocalDateTime parseDate(String raw) {
         String normalized = raw.trim().replace('T', ' ');
         List<DateTimeFormatter> formatters = List.of(
@@ -534,10 +577,12 @@ public class LumiActionService {
         return null;
     }
 
+    /** Normaliza un texto para facilitar la comparación, eliminando acentos y convirtiendo a minúsculas. */
     private String normalize(String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
     }
 
+    /** Devuelve un nombre seguro para mostrar de un usuario, utilizando su nombre completo si está disponible, o su email si no lo está. */
     private String safeName(User user) {
         return user.getName() != null ? user.getName() : "user " + user.getId();
     }

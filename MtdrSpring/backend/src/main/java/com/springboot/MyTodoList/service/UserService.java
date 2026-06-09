@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/** Servicio encargado de la gestión de usuarios del sistema. */
 @Service
 public class UserService {
 
@@ -33,10 +34,12 @@ public class UserService {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    /** Obtiene todos los usuarios registrados */
     public List<User> findAll() {
         return userRepository.findAll();
     }
 
+    /** Busca un usuario por correo electronico */
     public Optional<User> findByEmail(String email) {
         if (email == null || email.isBlank()) {
             return Optional.empty();
@@ -44,6 +47,7 @@ public class UserService {
         return userRepository.findByEmailIgnoreCase(email.trim());
     }
 
+    /** Busca un usuario mediante su identificador */
     public ResponseEntity<User> getUserById(int id) {
         Optional<User> userById = userRepository.findById((long) id);
         if (userById.isPresent()) {
@@ -52,6 +56,7 @@ public class UserService {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
+    /** Registra un nuevo usuario en la base de datos */
     public User addUser(User newUser) {
         encodePasswordIfNeeded(newUser);
         try {
@@ -65,8 +70,13 @@ public class UserService {
     }
 
     /**
-     * Oracle IDENTITY can stay at 1 while rows already use higher IDs (shared dev DB).
-     * Hibernate always inserts id=DEFAULT, so we assign MAX(id)+1 explicitly when that fails.
+     * Inserta un usuario asignando explícitamente
+     * un identificador único.
+     *
+     * Este método se utiliza como mecanismo de
+     * recuperación cuando el generador IDENTITY
+     * de Oracle pierde sincronización con los datos
+     * existentes.
      */
     private User insertUserWithExplicitId(User newUser) {
         if (newUser.getCreatedAt() == null) {
@@ -96,6 +106,11 @@ public class UserService {
         });
     }
 
+    /**
+     * Determina si una excepción corresponde a un
+     * problema de sincronización del campo ID
+     * autogenerado en Oracle.
+     */
     private static boolean isOracleIdIdentityOutOfSync(DataIntegrityViolationException ex) {
         String message = ex.getMostSpecificCause() != null
                 ? ex.getMostSpecificCause().getMessage()
@@ -107,11 +122,13 @@ public class UserService {
                 && (message.contains("columns (ID)") || message.contains("(ID:"));
     }
 
+    /** Metodo auxiliar utilizado para pruebas */
     public User test() {
         User newUser = new User(88L, "someNumber", "pwd");
         return userRepository.save(newUser);
     }
 
+    /** Elimina un usuario según su identificador */
     public boolean deleteUser(int id) {
         try {
             userRepository.deleteById((long) id);
@@ -121,6 +138,7 @@ public class UserService {
         }
     }
 
+    /** Actualiza la información de un usuario existente. */
     public User updateUser(long id, User user2update) {
         Optional<User> dbUser = userRepository.findById(id);
         if (dbUser.isPresent()) {
@@ -142,6 +160,7 @@ public class UserService {
         return null;
     }
 
+    /** Codifica la contraseña del usuario cuando aun no se encuentra cifrada */
     private void encodePasswordIfNeeded(User user) {
         String raw = user.getPasswordHash();
         if (raw == null || raw.isBlank() || isBcryptHash(raw)) {
@@ -150,6 +169,7 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(raw));
     }
 
+    /** Verifica si una cadena corresponde a un hash BCrypt. */
     private static boolean isBcryptHash(String value) {
         return value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$");
     }

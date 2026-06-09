@@ -12,26 +12,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/** Servicio encargado de gestionar la lógica de negocio relacionada con las tareas, incluyendo operaciones CRUD para las tareas almacenadas en la base de datos a través del TaskRepository. */
 @Service
 public class TaskService {
 
     @Autowired
     private TaskRepository taskRepository;
 
+    /** Devuelve una lista de todas las tareas almacenadas en la base de datos. */
     public List<Task> findAll() {
         return taskRepository.findAll();
     }
 
+    /** Devuelve un ResponseEntity que contiene la tarea con el ID especificado si existe, o un estado NOT_FOUND si no se encuentra. */
     public ResponseEntity<Task> getById(Long id) {
         Optional<Task> task = taskRepository.findById(id);
         return task.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    /** Agrega una nueva tarea a la base de datos y devuelve la tarea guardada, incluyendo su ID generado. */
     public Task add(Task task) {
         return taskRepository.save(task);
     }
 
+    /** Actualiza una tarea existente en la base de datos y devuelve la tarea actualizada. */
     public Task update(Long id, Task updated) {
         Optional<Task> task = taskRepository.findById(id);
         if (task.isPresent()) {
@@ -63,6 +68,7 @@ public class TaskService {
         return null;
     }
 
+    /** Elimina la tarea con el ID especificado de la base de datos, devolviendo true si la eliminación fue exitosa o false si ocurrió un error. */
     public boolean delete(Long id) {
         try {
             taskRepository.deleteById(id);

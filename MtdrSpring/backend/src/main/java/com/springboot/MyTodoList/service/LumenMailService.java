@@ -20,8 +20,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 
-/**
- * Sends Lumen emails through a transactional provider (Resend API) or SMTP inferred from the from-address domain.
+/****
+ * Servicio encargado de gestionar el envío de correos electrónicos utilizando diferentes proveedores.
+ *
+ * Actualmente soporta el envío de correos electrónicos a través de Resend, y también puede configurarse
+ * para enviar correos electrónicos utilizando SMTP con diferentes proveedores como Gmail, Outlook, etc.
+ *
+ * Proporciona un método para enviar correos electrónicos de invitación utilizando los datos del contexto
+ * de invitación, y maneja la lógica específica de cada proveedor para el envío de correos electrónicos.
  */
 @Service
 public class LumenMailService {
@@ -48,6 +54,7 @@ public class LumenMailService {
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
+    /** Verifica si el servicio de correo electrónico está configurado correctamente, comprobando la presencia de las claves API necesarias para el proveedor seleccionado o la configuración SMTP. */
     public boolean isConfigured() {
         if ("resend".equalsIgnoreCase(provider)) {
             return resendApiKey != null && !resendApiKey.isBlank();
@@ -55,6 +62,7 @@ public class LumenMailService {
         return smtpPassword != null && !smtpPassword.isBlank() && fromAddress != null && !fromAddress.isBlank();
     }
 
+    /** Envía un correo electrónico de invitación utilizando los datos del contexto de invitación y devuelve el resultado del envío, manejando la lógica específica para cada proveedor de correo electrónico. */
     public MailSendResult sendInvite(InviteEmailContext context) {
         if (!isConfigured()) {
             return MailSendResult.fail(
@@ -75,6 +83,7 @@ public class LumenMailService {
         }
     }
 
+    /** Métodos privados para manejar el envío de correos electrónicos a través de Resend y SMTP, así como para construir el asunto del correo electrónico y formatear los datos necesarios para cada proveedor. */
     private MailSendResult sendViaResend(String to, String subject, String html, String plain) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("from", fromAddress);
@@ -99,6 +108,7 @@ public class LumenMailService {
         return MailSendResult.fail(parseResendError(response.body()));
     }
 
+    /** Analiza el cuerpo de la respuesta de error de Resend para proporcionar un mensaje de error más amigable y específico, identificando errores comunes como claves API inválidas o restricciones en el modo de prueba. */
     private static String parseResendError(String body) {
         if (body != null && body.contains("API key is invalid")) {
             return "Resend API key is invalid. Create a new key at resend.com/api-keys.";
@@ -109,6 +119,7 @@ public class LumenMailService {
         return body != null && !body.isBlank() ? body : "Resend rejected the email.";
     }
 
+    /** Envía un correo electrónico utilizando SMTP, configurando el cliente de correo según el proveedor identificado a partir de la dirección de correo del remitente, y manejando la autenticación y seguridad necesarias para cada proveedor. */
     private MailSendResult sendViaSmtp(String to, String subject, String html, String plain) throws Exception {
         String emailOnly = extractEmail(fromAddress);
         SmtpHostResolver.SmtpPreset preset = SmtpHostResolver.resolve(emailOnly);
@@ -136,6 +147,7 @@ public class LumenMailService {
         return MailSendResult.ok();
     }
 
+    /** Extrae la dirección de correo electrónico de una cadena que puede contener un nombre y una dirección entre corchetes, devolviendo solo la parte de la dirección de correo electrónico para su uso en la configuración SMTP. */
     private static String extractEmail(String from) {
         if (from == null) {
             return "";
@@ -148,6 +160,7 @@ public class LumenMailService {
         return from.trim();
     }
 
+    /** Construye el asunto del correo electrónico de invitación en función de los datos del contexto, incluyendo el nombre del equipo si está disponible para hacer el asunto más personalizado y relevante para el destinatario. */
     private static String buildSubject(InviteEmailContext context) {
         String team = context.getTeamName();
         if (team != null && !team.isBlank()) {
