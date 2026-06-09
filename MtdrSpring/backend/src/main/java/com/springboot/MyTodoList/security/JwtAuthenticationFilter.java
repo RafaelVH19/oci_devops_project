@@ -18,12 +18,29 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
+/**
+ * Filtro de autenticación basado en JWT utilizado por Spring Security.
+ *
+ * Esta clase intercepta cada petición HTTP entrante para verificar
+ * si contiene un token JWT válido en la cabecera {@code Authorization}.
+ * Cuando el token es válido, se extrae la información del usuario
+ * autenticado y se registra dentro del contexto de seguridad de Spring.
+ *
+ * El filtro utiliza la misma clave secreta configurada en Better Auth
+ * para validar tokens firmados mediante el algoritmo HS256.
+ *
+ * Si el token es inválido, expiró o no puede ser verificado,
+ * el contexto de seguridad es limpiado y la petición continúa sin
+ * autenticación.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    /** La clave secreta utilizada para validar los tokens JWT */
     @Value("${better-auth.secret}")
     private String secret;
 
+    /** Ejecuta la validacion del token JWT para cada solicitud HTTP */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
