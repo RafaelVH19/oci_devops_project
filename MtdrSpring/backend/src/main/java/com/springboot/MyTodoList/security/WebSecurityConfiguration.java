@@ -24,7 +24,7 @@ public class WebSecurityConfiguration {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/health", "/invite-user").permitAll() // Public endpoints
+                .requestMatchers("/api/auth/**", "/health", "/api/users/invite").permitAll() // Public endpoints
                 .requestMatchers("/api/me").authenticated() // Example protected endpoint
                 .anyRequest().permitAll() // Keep others permitted for now while you migrate, or change to .authenticated()
             )

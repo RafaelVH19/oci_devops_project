@@ -31,7 +31,7 @@ async function syncWebLogin(oracleUserId?: number) {
 }
 
 async function main() {
-  const res = await fetch(`${springUrl.replace(/\/$/, '')}/invite-user`, {
+  const res = await fetch(`${springUrl.replace(/\/$/, '')}/api/users/invite`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
