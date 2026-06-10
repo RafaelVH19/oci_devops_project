@@ -8,6 +8,8 @@ const springUrl = process.env.SPRING_URL ?? 'http://localhost:8080';
 const authServerUrl = process.env.AUTH_SERVER_URL ?? 'http://localhost:3001';
 const email = process.env.SEED_EMAIL ?? 'manager@lumen.dev';
 const name = process.env.SEED_NAME ?? 'Demo Manager';
+const role = process.env.SEED_ROLE ?? 'MANAGER';
+const workMode = process.env.SEED_WORK_MODE ?? 'REMOTE';
 
 async function syncWebLogin(oracleUserId?: number) {
   const secret = process.env.INVITE_API_SECRET ?? 'dev-invite-secret-change-me';
@@ -35,8 +37,8 @@ async function main() {
     body: JSON.stringify({
       name,
       email,
-      role: 'MANAGER',
-      workMode: 'REMOTE',
+      role,
+      workMode,
     }),
   });
 
