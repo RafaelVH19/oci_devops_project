@@ -21,16 +21,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-/****
- * Servicio encargado de interpretar las intenciones del usuario a partir de sus mensajes,
- * utilizando un modelo de IA para analizar el mensaje y el contexto del workspace, y generar
- * un plan de acción que indique qué tipo de acción se debe realizar (crear equipo, proyecto,
- * sprint, responder con un chat, etc.) y qué detalles se necesitan para llevar a cabo esa acción.
- *
- * Proporciona un método para extraer el plan de acción a partir de un mensaje y el historial
- * de conversación, y maneja la lógica para comunicarse con la API de IA para obtener la interpretación
- * del mensaje del usuario.
- */
 @Service
 public class LumiIntentService {
 
@@ -73,7 +63,6 @@ public class LumiIntentService {
     private final UserService userService;
     private final TeamService teamService;
 
-    /** Constructor que inyecta las propiedades de IA, el objeto ObjectMapper para manejar la comunicación con la API de IA, y los servicios de usuario y equipo para obtener el contexto del workspace. */
     public LumiIntentService(AiProps aiProps,
                              ObjectMapper objectMapper,
                              UserService userService,
@@ -84,14 +73,12 @@ public class LumiIntentService {
         this.teamService = teamService;
     }
 
-    /** Verifica si el servicio de interpretación de intenciones de Lumen está disponible, es decir, si está habilitado y tiene una clave API configurada. */
     public boolean isAvailable() {
         return aiProps.isEnabled()
             && aiProps.getApiKey() != null
             && !aiProps.getApiKey().isBlank();
     }
 
-    /** Extrae un plan de acción a partir de un mensaje del usuario y el historial de conversación, comunicándose con la API de IA para obtener la interpretación del mensaje y devolviendo un objeto LumiActionPlan que indica la acción recomendada y los detalles necesarios para ejecutarla. */
     public Optional<LumiActionPlan> extractPlan(String message, List<GenAiChatMessage> history) {
         if (!isAvailable() || message == null || message.isBlank()) {
             return Optional.empty();
@@ -145,7 +132,6 @@ public class LumiIntentService {
         }
     }
 
-    /** Parsea el JSON de respuesta de la API de IA para construir un objeto LumiActionPlan que representa la acción recomendada por la IA, incluyendo detalles como el tipo de acción, nombres de equipo, proyecto, miembros, fechas, y si se necesita una aclaración adicional. */
     private LumiActionPlan parsePlan(String json) throws Exception {
         String payload = extractJsonPayload(json);
         JsonNode node = objectMapper.readTree(payload);
@@ -182,7 +168,6 @@ public class LumiIntentService {
         return plan;
     }
 
-    /** Devuelve el contexto del workspace, incluyendo información sobre los desarrolladores y equipos disponibles. */
     private String workspaceContext() {
         List<User> users = userService.findAll();
         List<Team> teams = teamService.findAll();
@@ -203,7 +188,6 @@ public class LumiIntentService {
         return "Workspace context:\nDevelopers:\n" + people + "\nTeams/projects:\n" + teamLines;
     }
 
-    /** Extrae un texto de un campo específico de un nodo JSON, devolviendo null si el campo no existe, es nulo, o está vacío después de recortar espacios. */
     private String textOrNull(JsonNode node, String field) {
         JsonNode value = node.path(field);
         if (value.isMissingNode() || value.isNull()) {
@@ -213,7 +197,6 @@ public class LumiIntentService {
         return text.isEmpty() ? null : text;
     }
 
-    /** Normaliza el rol del mensaje para asegurarse de que sea uno de los roles esperados (assistant, system, user) y devuelve "user" por defecto si el rol es desconocido o nulo. */
     private String normalizeRole(String role) {
         if (role == null) {
             return "user";
@@ -225,7 +208,6 @@ public class LumiIntentService {
         return "user";
     }
 
-    /** Crea un mapa que representa un mensaje con un rol y contenido específico, utilizado para construir la lista de mensajes que se envían al modelo de IA. */
     private Map<String, Object> messageOf(String role, String content) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
@@ -233,7 +215,6 @@ public class LumiIntentService {
         return message;
     }
 
-    /** Extrae el contenido JSON de una respuesta de texto que puede contener texto adicional o estar formateada con markdown, buscando el bloque de código que contiene el JSON o extrayendo el primer objeto JSON que encuentre en el texto. */
     private String extractJsonPayload(String content) {
         String trimmed = content == null ? "" : content.trim();
         if (trimmed.startsWith("```")) {

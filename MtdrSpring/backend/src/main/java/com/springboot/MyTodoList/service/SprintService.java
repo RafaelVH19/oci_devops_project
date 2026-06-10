@@ -10,31 +10,26 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-/** Servicio encargado de gestionar la lógica de negocio relacionada con los sprints, incluyendo operaciones CRUD para los sprints almacenados en la base de datos a través del SprintRepository. */    
 @Service
 public class SprintService {
 
     @Autowired
     private SprintRepository sprintRepository;
 
-    /** Devuelve una lista de todos los sprints almacenados en la base de datos. */
     public List<Sprint> findAll() {
         return sprintRepository.findAll();
     }
 
-    /** Devuelve un ResponseEntity que contiene el sprint con el ID especificado si existe, o un estado NOT_FOUND si no se encuentra. */
     public ResponseEntity<Sprint> getById(Long id) {
         Optional<Sprint> sprint = sprintRepository.findById(id);
         return sprint.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    /** Agrega un nuevo sprint a la base de datos y devuelve el sprint guardado, incluyendo su ID generado. */
     public Sprint add(Sprint sprint) {
         return sprintRepository.save(sprint);
     }
 
-    /** Actualiza un sprint existente en la base de datos y devuelve el sprint actualizado. */
     public Sprint update(Long id, Sprint updated) {
         Optional<Sprint> sprint = sprintRepository.findById(id);
         if (sprint.isPresent()) {
@@ -48,7 +43,6 @@ public class SprintService {
         return null;
     }
 
-    /** Elimina el sprint con el ID especificado de la base de datos, devolviendo true si la eliminación fue exitosa o false si ocurrió un error. */
     public boolean delete(Long id) {
         try {
             sprintRepository.deleteById(id);

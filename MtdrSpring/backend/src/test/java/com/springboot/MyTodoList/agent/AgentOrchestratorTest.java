@@ -5,18 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.springboot.MyTodoList.service.TaskSemanticSearchService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * Conjunto de pruebas unitarias para la clase {@link AgentOrchestrator}.
- *
- * Estas pruebas verifican el comportamiento del orquestador encargado de
- * coordinar la interpretación de mensajes mediante inteligencia artificial
- * y la ejecución de acciones sobre el espacio de trabajo del proyecto.
- */
 @ExtendWith(MockitoExtension.class)
 class AgentOrchestratorTest {
 
@@ -26,19 +20,21 @@ class AgentOrchestratorTest {
     @Mock
     private ProjectWorkspaceService workspaceService;
 
+    @Mock
+    private TaskSemanticSearchService semanticSearchService;
+
         private AgentOrchestrator newOrchestrator() {
-                return new AgentOrchestrator(llmIntentParser, workspaceService);
+                return new AgentOrchestrator(llmIntentParser, workspaceService, semanticSearchService);
         }
 
-    /** Test que verifica que el constructor rechace dependencias nulas. */
     @Test
     void constructorRejectsNullDependencies() {
-        assertThatThrownBy(() -> new AgentOrchestrator(null, workspaceService))
+        assertThatThrownBy(() -> new AgentOrchestrator(null, workspaceService, semanticSearchService))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new AgentOrchestrator(llmIntentParser, null))
+        assertThatThrownBy(() -> new AgentOrchestrator(llmIntentParser, null, semanticSearchService))
                 .isInstanceOf(NullPointerException.class);
     }
-    /** Test que verifica que cuando el mensaje recibido es nulo, */
+
     @Test
     void handleMessageWithNullTextReturnsDefaultResponse() {
                 String response = newOrchestrator().handleMessage(null);
@@ -48,7 +44,6 @@ class AgentOrchestratorTest {
         verifyNoInteractions(llmIntentParser, workspaceService);
     }
 
-    /** Test que verifica que cuando el analizador de intenciones devuelve un resultado nulo, el orquestador responda con el mensaje de ayuda predeterminado. */
     @Test
     void handleMessageWithNullParsedIntentReturnsDefaultResponse() {
         when(llmIntentParser.parse("hola"))
@@ -60,7 +55,6 @@ class AgentOrchestratorTest {
                 .isEqualTo("No pude interpretar la solicitud. Escribe ayuda para ver ejemplos.");
     }
 
-    /** Test que verifica que la operación de listado de tareas funcione correctamente cuando el servicio devuelve una colección nula */
     @Test
     void handleMessageWithNullTaskListUsesEmptyFallback() {
         ParsedIntent parsedIntent = new ParsedIntent();
@@ -76,7 +70,6 @@ class AgentOrchestratorTest {
                 .contains("No encontré tareas para ese criterio.");
     }
 
-    /** Verifica que el resumen de carga del equipo se genere correctamente incluso cuando el servicio devuelve datos nulos */
     @Test
     void teamLoadSummaryWithNullTotalsUsesEmptyFallback() {
         ParsedIntent parsedIntent = new ParsedIntent();

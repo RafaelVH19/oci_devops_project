@@ -9,24 +9,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controlador REST encargado de administrar
- * elementos de la lista de tareas pendientes.
- */
 @RestController
 public class ToDoItemController {
     @Autowired
     private ToDoItemService toDoItemService;
     //@CrossOrigin
-
-    /** Obtiene todos los elementos de la lista de tareas pendientes */
     @GetMapping(value = "/todolist")
     public List<ToDoItem> getAllToDoItems(){
         return toDoItemService.findAll();
     }
     //@CrossOrigin
-
-    /** Obtiene un elemento de la lista de tareas pendientes por su ID */
     @GetMapping(value = "/todolist/{id}")
     public ResponseEntity<ToDoItem> getToDoItemById(@PathVariable int id){
         try{
@@ -37,8 +29,6 @@ public class ToDoItemController {
         }
     }
     //@CrossOrigin
-
-    /** Agrega un nuevo elemento a la lista de tareas pendientes */
     @PostMapping(value = "/todolist")
     public ResponseEntity<ToDoItem> addToDoItem(@RequestBody ToDoItem todoItem) throws Exception{
         ToDoItem td = toDoItemService.addToDoItem(todoItem);
@@ -51,8 +41,6 @@ public class ToDoItemController {
                 .headers(responseHeaders).build();
     }
     //@CrossOrigin
-
-    /** Actualiza un elemento de la lista de tareas pendientes */
     @PutMapping(value = "todolist/{id}")
     public ResponseEntity<ToDoItem> updateToDoItem(@RequestBody ToDoItem toDoItem, @PathVariable int id){
         try{
@@ -64,8 +52,6 @@ public class ToDoItemController {
         }
     }
     //@CrossOrigin
-
-    /** Elimina un elemento de la lista de tareas pendientes */
     @DeleteMapping(value = "todolist/{id}")
     public ResponseEntity<Boolean> deleteToDoItem(@PathVariable("id") int id){
         Boolean flag = false;

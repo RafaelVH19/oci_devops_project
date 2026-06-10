@@ -13,13 +13,6 @@ import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Servicio encargado de actuar como puente entre la aplicación y un servidor
- * de autenticación externo.
- *
- * Permite crear usuarios en el servidor de autenticación cuando se registran
- * en la aplicación, asegurando que ambos sistemas estén sincronizados.
- */
 @Service
 public class AuthBridgeService {
 
@@ -34,12 +27,10 @@ public class AuthBridgeService {
     @Value("${auth.server.invite-secret:}")
     private String inviteSecret;
 
-    /** Constructor que inyecta el objeto ObjectMapper */
     public AuthBridgeService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    /** Crea un usuario en el servidor de autenticación */
     public boolean createAuthUser(String email, String password, String name, Long oracleUserId) {
         if (inviteSecret == null || inviteSecret.isBlank()) {
             logger.warn("auth.server.invite-secret is not set; skipping Better Auth user creation");

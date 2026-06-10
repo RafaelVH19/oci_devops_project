@@ -102,6 +102,12 @@ public class RuleBasedIntentParser implements IntentParser {
             }
         }
 
+        if (isSemanticTaskQuery(normalized)) {
+            intent.setIntent(IntentType.SEMANTIC_TASK_SEARCH);
+            intent.setQueryText(text);
+            return intent;
+        }
+
         Matcher matcher = CREATE_TASK_PATTERN.matcher(text);
         if (matcher.find()) {
             intent.setIntent(IntentType.CREATE_TASK);
@@ -141,5 +147,42 @@ public class RuleBasedIntentParser implements IntentParser {
         // Heuristic: consider it a KPI query when 'kpi' appears along with user/developer mention.
         return normalized.contains("kpi")
             && (normalized.contains("usuario") || normalized.contains("desarrollador"));
+    }
+
+    private boolean isSemanticTaskQuery(String normalized) {
+        // Qualitative / ranking phrases
+        if (normalized.contains("most important") || normalized.contains("más importante")
+                || normalized.contains("mas importante")
+                || normalized.contains("easiest") || normalized.contains("más fácil")
+                || normalized.contains("mas facil")
+                || normalized.contains("hardest") || normalized.contains("most complex")
+                || normalized.contains("quickest") || normalized.contains("fastest")
+                || normalized.contains("most urgent") || normalized.contains("más urgente")
+                || normalized.contains("mas urgente")) {
+            return true;
+        }
+        // Thematic / topic queries: "tasks related to X", "tasks about X", "give me a X task"
+        if ((normalized.contains("related to") || normalized.contains("relacionad")
+                || normalized.contains("about") || normalized.contains("sobre")
+                || normalized.contains("give me a") || normalized.contains("dame una")
+                || normalized.contains("find tasks") || normalized.contains("busca tarea")
+                || normalized.contains("tasks like") || normalized.contains("similar to"))
+                && (normalized.contains("task") || normalized.contains("tarea"))) {
+            return true;
+        }
+        // Tech-topic shorthand: "backend tasks", "database tasks", "frontend tasks", etc.
+        if ((normalized.contains("task") || normalized.contains("tarea"))
+                && (normalized.contains("backend") || normalized.contains("frontend")
+                    || normalized.contains("database") || normalized.contains("api")
+                    || normalized.contains("auth") || normalized.contains("login")
+                    || normalized.contains("bug") || normalized.contains("ui")
+                    || normalized.contains("test") || normalized.contains("deploy"))) {
+            // Avoid false-positives with existing list/status intents
+            if (!normalized.contains("mis tareas") && !normalized.contains("tareas tiene")
+                    && !normalized.contains("tareas pendientes") && !normalized.contains("tareas done")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

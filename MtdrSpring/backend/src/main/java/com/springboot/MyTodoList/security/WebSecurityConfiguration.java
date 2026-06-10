@@ -8,29 +8,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Configuración principal de seguridad para la aplicación.
- *
- * Esta clase define las reglas de autenticación y autorización
- * utilizadas por Spring Security, así como la integración del filtro
- * personalizado de validación JWT.
- *
- * La configuración actual utiliza un modelo stateless, donde
- * cada petición debe contener su propio token JWT y no se almacenan
- * sesiones en el servidor.
- */
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /** Constructor que inyecta el filtro de autenticación JWT */
     public WebSecurityConfiguration(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
     
-    /** Configura la cadena de filtros de seguridad */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

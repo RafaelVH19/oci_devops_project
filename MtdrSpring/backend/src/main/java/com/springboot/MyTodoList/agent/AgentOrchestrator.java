@@ -1,5 +1,6 @@
 package com.springboot.MyTodoList.agent;
 
+import com.springboot.MyTodoList.service.TaskSemanticSearchService;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +15,14 @@ public class AgentOrchestrator {
 
     private final LlmIntentParser llmIntentParser;
     private final ProjectWorkspaceService workspaceService;
-    /** Create an orchestrator using an LLM-based parser and a workspace service. */
-    public AgentOrchestrator(LlmIntentParser llmIntentParser, ProjectWorkspaceService workspaceService) {
+    private final TaskSemanticSearchService semanticSearchService;
+
+    /** Create an orchestrator using an LLM-based parser, a workspace service and the semantic search service. */
+    public AgentOrchestrator(LlmIntentParser llmIntentParser, ProjectWorkspaceService workspaceService,
+                             TaskSemanticSearchService semanticSearchService) {
         this.llmIntentParser = Objects.requireNonNull(llmIntentParser, "llmIntentParser must not be null");
         this.workspaceService = Objects.requireNonNull(workspaceService, "workspaceService must not be null");
+        this.semanticSearchService = Objects.requireNonNull(semanticSearchService, "semanticSearchService must not be null");
     }
     /** Convenience overload: handle a message without specifying a user role. */
     public String handleMessage(String messageText) {
@@ -58,6 +63,7 @@ public class AgentOrchestrator {
             case GET_DEVELOPER_KPI -> getDeveloperKpiResponse(parsedIntent);
             case CURRENT_SPRINT_SUMMARY -> sprintSummary();
             case TEAM_LOAD_SUMMARY -> teamLoadSummary();
+            case SEMANTIC_TASK_SEARCH -> semanticSearch(parsedIntent);
             default -> DEFAULT_RESPONSE;
         };
     }
@@ -172,6 +178,19 @@ public class AgentOrchestrator {
             .sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder()))
             .forEach(entry -> joiner.add("- " + entry.getKey() + ": " + entry.getValue() + " pts"));
         return joiner.toString().trim();
+    }
+
+    /** Run a semantic vector search and format the matching tasks. */
+    private String semanticSearch(ParsedIntent parsedIntent) {
+        String query = parsedIntent.getQueryText();
+        if (query == null || query.isBlank()) {
+            query = parsedIntent.getResponseText();
+        }
+        if (query == null || query.isBlank()) {
+            return "Necesito saber qué tipo de tarea buscas. Por ejemplo: \"tareas relacionadas con el backend\".";
+        }
+        List<TaskItem> results = semanticSearchService.findSimilarTasks(query);
+        return formatTasks("Tareas más relevantes para \"" + query + "\":", results);
     }
 
     /** Format a list of tasks into a readable multiline string with the given title. */

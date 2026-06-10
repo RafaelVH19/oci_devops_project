@@ -46,11 +46,9 @@ spec:
       labels:
         app: lumen-auth-server
     spec:
-      imagePullSecrets:
-        - name: ocirsecret
       containers:
         - name: lumen-auth-server
-          image: "%DOCKER_REGISTRY%/lumen-auth-server:%IMAGE_VERSION%"
+          image: %DOCKER_REGISTRY%/lumen-auth-server:%IMAGE_VERSION%
           imagePullPolicy: Always
           ports:
             - containerPort: 3001

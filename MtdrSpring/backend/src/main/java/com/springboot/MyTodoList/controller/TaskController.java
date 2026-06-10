@@ -25,11 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Controlador REST encargado de administrar tareas
- * y exponer información enriquecida con los datos
- * del sprint al que pertenecen.
- */
 @RestController
 public class TaskController {
 
@@ -45,7 +40,6 @@ public class TaskController {
     @Autowired
     private SprintRepository sprintRepository;
 
-    /** Obtiene todas las tareas registradas junto con su información de sprint asociada */
     @GetMapping(value = "/tasks")
     public List<TaskWithSprintResponse> getAllTasks() {
         List<Task> tasks = taskService.findAll();
@@ -56,7 +50,6 @@ public class TaskController {
         return response;
     }
 
-    /** Obtiene una tarea específica mediante su ID junto con su información de sprint asociada */
     @GetMapping(value = "/tasks/{id}")
     public ResponseEntity<TaskWithSprintResponse> getTaskById(@PathVariable Long id) {
         ResponseEntity<Task> taskResponse = taskService.getById(id);
@@ -67,7 +60,6 @@ public class TaskController {
         return new ResponseEntity<>(buildTaskWithSprint(taskResponse.getBody()), HttpStatus.OK);
     }
 
-    /** Obtiene todas las tareas asociadas a un sprint específico mediante el ID del sprint */
     @GetMapping(value = "/sprints/{sprintId}/tasks")
     public ResponseEntity<List<TaskWithSprintResponse>> getTasksBySprint(@PathVariable Long sprintId) {
         if (!sprintRepository.existsById(sprintId)) {
@@ -89,7 +81,6 @@ public class TaskController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    /** Registra una nueva tarea junto con su información de sprint asociada */
     @PostMapping(value = "/tasks")
     public ResponseEntity<TaskWithSprintResponse> addTask(@RequestBody Task task) {
         Task dbTask = taskService.add(task);
@@ -102,7 +93,6 @@ public class TaskController {
                 .body(buildTaskWithSprint(dbTask));
     }
 
-    /** Actualiza la información de una tarea existente junto con su información de sprint asociada */
     @PutMapping(value = "/tasks/{id}")
     public ResponseEntity<TaskWithSprintResponse> updateTask(@RequestBody Task task, @PathVariable Long id) {
         Task dbTask = taskService.update(id, task);
@@ -113,7 +103,6 @@ public class TaskController {
         return new ResponseEntity<>(buildTaskWithSprint(dbTask), HttpStatus.OK);
     }
 
-    /** Elimina una tarea existente junto con su información de sprint asociada */
     @DeleteMapping(value = "/tasks/{id}")
     public ResponseEntity<Boolean> deleteTask(@PathVariable("id") Long id) {
         boolean deleted = taskService.delete(id);
@@ -123,10 +112,6 @@ public class TaskController {
         return new ResponseEntity<>(true, HttpStatus.OK);
     }
 
-    /**
-     * Construye un DTO que contiene la información de una tarea
-     * junto con el resumen del sprint más reciente al que pertenece.
-     */
     private TaskWithSprintResponse buildTaskWithSprint(Task task) {
         Optional<SprintTask> sprintTask = sprintTaskRepository.findByIdTaskId(task.getId()).stream()
             .filter(link -> link.getRemovedAt() == null)

@@ -15,13 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-/**
- * Servicio encargado de gestionar la comunicación con el modelo de IA Groq.
- *
- * Proporciona métodos para enviar mensajes y obtener respuestas generadas por
- * el modelo de IA, utilizando la API de Groq para procesar las conversaciones
- * basadas en el historial y el mensaje actual del usuario.
- */
 @Service
 public class GroqChatService {
 
@@ -42,20 +35,17 @@ public class GroqChatService {
     private final AiProps aiProps;
     private final ObjectMapper objectMapper;
 
-    /** Constructor que inyecta las propiedades de IA y el objeto ObjectMapper para manejar la comunicación con la API de Groq. */
     public GroqChatService(AiProps aiProps, ObjectMapper objectMapper) {
         this.aiProps = aiProps;
         this.objectMapper = objectMapper;
     }
 
-    /** Verifica si el servicio de chat de Groq está disponible, es decir, si está habilitado y tiene una clave API configurada. */
     public boolean isAvailable() {
         return aiProps.isEnabled()
             && aiProps.getApiKey() != null
             && !aiProps.getApiKey().isBlank();
     }
 
-    /** Envía un mensaje al modelo de IA Groq junto con el historial de conversación y obtiene una respuesta generada por el modelo. */
     public String chat(String message, List<GenAiChatMessage> history) {
         if (!isAvailable()) {
             return null;
@@ -106,7 +96,6 @@ public class GroqChatService {
         }
     }
 
-    /** Normaliza el rol del mensaje para asegurarse de que sea uno de los roles esperados (assistant, system, user) y devuelve "user" por defecto si el rol es desconocido o nulo. */
     private String normalizeRole(String role) {
         if (role == null) {
             return "user";
@@ -118,7 +107,6 @@ public class GroqChatService {
         return "user";
     }
 
-    /** Crea un mapa que representa un mensaje con un rol y contenido específico, utilizado para construir la lista de mensajes que se envían al modelo de IA. */
     private Map<String, Object> messageOf(String role, String content) {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);

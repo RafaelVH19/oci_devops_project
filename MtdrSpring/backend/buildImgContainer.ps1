@@ -24,7 +24,45 @@ Write-Host ""
 Write-Host "Spring:     http://localhost:8080" -ForegroundColor Green
 Write-Host "Auth:       interno (dev: http://localhost:3001)" -ForegroundColor Green
 Write-Host ""
-Write-Host "Crear usuario de prueba (otra terminal):" -ForegroundColor Yellow
-Write-Host "  cd auth-server"
-Write-Host "  npm run seed"
-Write-Host "  Email: manager@lumen.dev - password: el que imprime seed"
+
+# Wait for Spring Boot to be ready before seeding
+Write-Host "Esperando que Spring Boot este listo..." -ForegroundColor Yellow
+$springReady = $false
+for ($i = 1; $i -le 24; $i++) {
+    try {
+        $null = Invoke-WebRequest -Uri 'http://localhost:8080' -UseBasicParsing -ErrorAction Stop -TimeoutSec 3
+        $springReady = $true
+        break
+    } catch {
+        if ($i -lt 24) { Start-Sleep -Seconds 5 }
+    }
+}
+
+if (-not $springReady) {
+    Write-Host "Spring Boot no respondio en 2 minutos. Crea los usuarios manualmente:" -ForegroundColor Red
+    Write-Host "  cd auth-server && npm run seed"
+} else {
+    Write-Host "Spring listo. Creando usuarios de prueba..." -ForegroundColor Yellow
+    Push-Location auth-server
+    try {
+        # Manager
+        npm run seed
+
+        # Developer
+        $env:SEED_EMAIL    = 'developer@lumen.dev'
+        $env:SEED_NAME     = 'Demo Developer'
+        $env:SEED_ROLE     = 'DEVELOPER'
+        $env:SEED_PASSWORD = 'LumenDev1!'
+        npm run seed
+    } finally {
+        Pop-Location
+        Remove-Item Env:\SEED_EMAIL    -ErrorAction SilentlyContinue
+        Remove-Item Env:\SEED_NAME     -ErrorAction SilentlyContinue
+        Remove-Item Env:\SEED_ROLE     -ErrorAction SilentlyContinue
+        Remove-Item Env:\SEED_PASSWORD -ErrorAction SilentlyContinue
+    }
+    Write-Host ""
+    Write-Host "Usuarios listos:" -ForegroundColor Green
+    Write-Host "  manager@lumen.dev   / LumenDev1!  (MANAGER)"  -ForegroundColor Cyan
+    Write-Host "  developer@lumen.dev / LumenDev1!  (DEVELOPER)" -ForegroundColor Cyan
+}

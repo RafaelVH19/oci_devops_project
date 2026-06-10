@@ -6,6 +6,8 @@ import java.util.Map;
 // 2. Imports de Spring Web y Core
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,34 +21,37 @@ import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 // 5. Import de Project Reactor (Para el manejo de flujos asíncronos con Flux)
 import reactor.core.publisher.Flux;
 
-/**
- * Controlador encargado de exponer servicios de generación de texto
- * utilizando el modelo Google GenAI integrado mediante Spring AI.
- */
+<<<<<<< Updated upstream
+=======
+// 6. Imports para el endpoint de chat de Lumi
+import com.springboot.MyTodoList.controller.dto.GenAiChatRequest;
+import com.springboot.MyTodoList.controller.dto.GenAiChatResponse;
+import com.springboot.MyTodoList.service.GenAiChatService;
+
+>>>>>>> Stashed changes
 @RestController
 public class GenAIChatController {
 
     private final GoogleGenAiChatModel chatModel;
+    private final GenAiChatService genAiChatService;
 
-    /**
-     * Inicializa el controlador con el modelo de IA configurado.
-     */
     @Autowired
-    public GenAIChatController(GoogleGenAiChatModel chatModel) {
+    public GenAIChatController(GoogleGenAiChatModel chatModel, GenAiChatService genAiChatService) {
         this.chatModel = chatModel;
+        this.genAiChatService = genAiChatService;
     }
 
-    /** Genera una respuesta utilizando el modelo de IA. */
+    /** Lumi chat endpoint used by the frontend. */
+    @PostMapping("/api/genai/chat")
+    public GenAiChatResponse chat(@RequestBody GenAiChatRequest request) {
+        return new GenAiChatResponse(genAiChatService.reply(request));
+    }
+
     @GetMapping("/ai/generate")
     public Map generate(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
         return Map.of("generation", this.chatModel.call(message));
     }
 
-    /**
-     * Genera una respuesta en modo streaming utilizando el modelo de IA.
-     *
-     * Permite recibir fragmentos de la respuesta conforme son generados.
-     */
     @GetMapping("/ai/generateStream")
 	public Flux<ChatResponse> generateStream(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
         Prompt prompt = new Prompt(new UserMessage(message));

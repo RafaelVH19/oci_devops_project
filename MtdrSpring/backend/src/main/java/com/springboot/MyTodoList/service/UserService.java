@@ -3,11 +3,9 @@ package com.springboot.MyTodoList.service;
 import com.springboot.MyTodoList.model.User;
 import com.springboot.MyTodoList.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -18,28 +16,29 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/** Servicio encargado de la gestión de usuarios del sistema. */
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final PlatformTransactionManager transactionManager;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Autowired
-    private PlatformTransactionManager transactionManager;
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            PlatformTransactionManager transactionManager) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.transactionManager = transactionManager;
+    }
 
-    /** Obtiene todos los usuarios registrados */
     public List<User> findAll() {
         return userRepository.findAll();
     }
 
-    /** Busca un usuario por correo electronico */
     public Optional<User> findByEmail(String email) {
         if (email == null || email.isBlank()) {
             return Optional.empty();
@@ -47,18 +46,13 @@ public class UserService {
         return userRepository.findByEmailIgnoreCase(email.trim());
     }
 
-    /** Busca un usuario mediante su identificador */
-    public ResponseEntity<User> getUserById(int id) {
-        Optional<User> userById = userRepository.findById((long) id);
-        if (userById.isPresent()) {
-            return new ResponseEntity<>(userById.get(), HttpStatus.OK);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public Optional<User> getUserById(int id) {
+        return userRepository.findById((long) id);
     }
 
-    /** Registra un nuevo usuario en la base de datos */
     public User addUser(User newUser) {
         encodePasswordIfNeeded(newUser);
+
         try {
             return userRepository.save(newUser);
         } catch (DataIntegrityViolationException ex) {
@@ -70,27 +64,45 @@ public class UserService {
     }
 
     /**
-     * Inserta un usuario asignando explícitamente
-     * un identificador único.
-     *
-     * Este método se utiliza como mecanismo de
-     * recuperación cuando el generador IDENTITY
-     * de Oracle pierde sincronización con los datos
-     * existentes.
+     * Oracle IDENTITY can stay at 1 while rows already use higher IDs (shared dev DB).
+     * Hibernate always inserts id=DEFAULT, so we assign MAX(id)+1 explicitly when that fails.
      */
     private User insertUserWithExplicitId(User newUser) {
         if (newUser.getCreatedAt() == null) {
             newUser.setCreatedAt(LocalDateTime.now());
         }
+
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
         return tx.execute(status -> {
             Long nextId = userRepository.findNextAvailableId();
+
             entityManager.createNativeQuery(
-                            """
-                            INSERT INTO users (id, name, email, telegram_id, role, work_mode, is_active, created_at, password_hash)
-                            VALUES (:id, :name, :email, :telegramId, :role, :workMode, :isActive, :createdAt, :passwordHash)
-                            """)
+                    """
+                    INSERT INTO users (
+                        id,
+                        name,
+                        email,
+                        telegram_id,
+                        role,
+                        work_mode,
+                        is_active,
+                        created_at,
+                        password_hash
+                    )
+                    VALUES (
+                        :id,
+                        :name,
+                        :email,
+                        :telegramId,
+                        :role,
+                        :workMode,
+                        :isActive,
+                        :createdAt,
+                        :passwordHash
+                    )
+                    """)
                     .setParameter("id", nextId)
                     .setParameter("name", newUser.getName())
                     .setParameter("email", newUser.getEmail())
@@ -101,76 +113,77 @@ public class UserService {
                     .setParameter("createdAt", newUser.getCreatedAt())
                     .setParameter("passwordHash", newUser.getPasswordHash())
                     .executeUpdate();
+
             newUser.setId(nextId);
             return newUser;
         });
     }
 
-    /**
-     * Determina si una excepción corresponde a un
-     * problema de sincronización del campo ID
-     * autogenerado en Oracle.
-     */
     private static boolean isOracleIdIdentityOutOfSync(DataIntegrityViolationException ex) {
         String message = ex.getMostSpecificCause() != null
                 ? ex.getMostSpecificCause().getMessage()
                 : ex.getMessage();
+
         if (message == null) {
             return false;
         }
+
         return message.contains("ORA-00001")
                 && (message.contains("columns (ID)") || message.contains("(ID:"));
     }
 
-    /** Metodo auxiliar utilizado para pruebas */
     public User test() {
         User newUser = new User(88L, "someNumber", "pwd");
         return userRepository.save(newUser);
     }
 
-    /** Elimina un usuario según su identificador */
     public boolean deleteUser(int id) {
-        try {
-            userRepository.deleteById((long) id);
-            return true;
-        } catch (Exception e) {
+        Long userId = (long) id;
+
+        if (!userRepository.existsById(userId)) {
             return false;
         }
+
+        userRepository.deleteById(userId);
+        return true;
     }
 
-    /** Actualiza la información de un usuario existente. */
-    public User updateUser(long id, User user2update) {
-        Optional<User> dbUser = userRepository.findById(id);
-        if (dbUser.isPresent()) {
-            User user = dbUser.get();
-            user.setId(id);
-            user.setName(user2update.getName());
-            user.setEmail(user2update.getEmail());
-            user.setTelegramId(user2update.getTelegramId());
-            user.setRole(user2update.getRole());
-            user.setWorkMode(user2update.getWorkMode());
-            user.setIsActive(user2update.getIsActive());
-            user.setCreatedAt(user2update.getCreatedAt());
-            if (user2update.getPasswordHash() != null && !user2update.getPasswordHash().isBlank()) {
-                user.setPasswordHash(user2update.getPasswordHash());
-                encodePasswordIfNeeded(user);
-            }
-            return userRepository.save(user);
+    public User updateUser(long id, User userToUpdate) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new EntityNotFoundException("User not found with id: " + id));
+
+        user.setName(userToUpdate.getName());
+        user.setEmail(userToUpdate.getEmail());
+        user.setTelegramId(userToUpdate.getTelegramId());
+        user.setRole(userToUpdate.getRole());
+        user.setWorkMode(userToUpdate.getWorkMode());
+        user.setIsActive(userToUpdate.getIsActive());
+        user.setCreatedAt(userToUpdate.getCreatedAt());
+
+        if (userToUpdate.getPasswordHash() != null
+                && !userToUpdate.getPasswordHash().isBlank()) {
+
+            user.setPasswordHash(userToUpdate.getPasswordHash());
+            encodePasswordIfNeeded(user);
         }
-        return null;
+
+        return userRepository.save(user);
     }
 
-    /** Codifica la contraseña del usuario cuando aun no se encuentra cifrada */
     private void encodePasswordIfNeeded(User user) {
         String raw = user.getPasswordHash();
+
         if (raw == null || raw.isBlank() || isBcryptHash(raw)) {
             return;
         }
+
         user.setPasswordHash(passwordEncoder.encode(raw));
     }
 
-    /** Verifica si una cadena corresponde a un hash BCrypt. */
     private static boolean isBcryptHash(String value) {
-        return value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$");
+        return value.startsWith("$2a$")
+                || value.startsWith("$2b$")
+                || value.startsWith("$2y$");
     }
 }

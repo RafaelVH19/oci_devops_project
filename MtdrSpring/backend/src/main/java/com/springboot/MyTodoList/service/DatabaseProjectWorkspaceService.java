@@ -20,16 +20,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
-/**
- * Implementación del servicio de espacio de trabajo del proyecto
- * que interactúa con la base de datos para gestionar tareas, sprints
- * y usuarios.
- *
- * Proporciona métodos para obtener tareas, crear nuevas tareas,
- * obtener información del sprint actual y calcular puntos de historia
- * por asignado, entre otras funcionalidades relacionadas con la gestión
- * de proyectos.
- */
 @Service
 public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService {
 
@@ -38,7 +28,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
     private final SprintTaskService sprintTaskService;
     private final UserService userService;
 
-    /** Constructor que inyecta las dependencias necesarias. */
     public DatabaseProjectWorkspaceService(TaskService taskService,
                                            SprintService sprintService,
                                            SprintTaskService sprintTaskService,
@@ -49,14 +38,12 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         this.userService = userService;
     }
 
-    /** Obtiene todas las tareas del proyecto. */
     @Override
     public List<TaskItem> findAllTasks() {
         syncCarryOverLinks();
         return buildTaskItems(taskService.findAll());
     }
 
-    /** Obtiene las tareas del proyecto asignadas a un usuario específico. */
     @Override
     public List<TaskItem> findTasksByAssignee(String assignee) {
         if (assignee == null || assignee.isBlank()) {
@@ -80,7 +67,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         return buildTaskItems(filtered);
     }
 
-    /** Obtiene las tareas del proyecto por su estado. */
     @Override
     public List<TaskItem> findTasksByStatus(String status) {
         syncCarryOverLinks();
@@ -92,7 +78,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         return buildTaskItems(filtered);
     }
 
-    /** Crea una nueva tarea en el proyecto. */
     @Override
     public TaskItem createTask(String title, String assignee, int expectedHours, String sprintName, boolean bug) {
         List<User> users = userService.findAll();
@@ -154,7 +139,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         );
     }
 
-    /** Obtiene la información del sprint actual. */
     @Override
     public SprintInfo getCurrentSprint() {
         List<Sprint> sprints = sprintService.findAll();
@@ -181,7 +165,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
             });
     }
 
-    /** Obtiene los puntos de historia por asignado. */
     @Override
     public Map<String, Integer> storyPointsByAssignee() {
         syncCarryOverLinks();
@@ -203,7 +186,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         return totals;
     }
 
-    /** Construye una lista de elementos de tarea a partir de una lista de tareas. */
     private List<TaskItem> buildTaskItems(List<Task> tasks) {
         List<User> users = userService.findAll();
         List<SprintTask> sprintTasks = sprintTaskService.findAll();
@@ -242,7 +224,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
             .collect(Collectors.toList());
     }
 
-    /** Resuelve el sprint correspondiente al nombre proporcionado. */
     private Sprint resolveSprint(String sprintName) {
         List<Sprint> sprints = sprintService.findAll();
         if (sprints.isEmpty()) {
@@ -269,7 +250,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
                 .orElse(null));
     }
 
-    /** Normaliza el estado de una tarea. */
     private String normalizeStatus(String value) {
         if (value == null) {
             return "PENDING";
@@ -283,7 +263,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         };
     }
 
-    /** Convierte las horas a una prioridad de tarea. */
     private TaskPriority hoursToPriority(int hours) {
         if (hours <= 1) {
             return TaskPriority.LOW;
@@ -294,7 +273,6 @@ public class DatabaseProjectWorkspaceService implements ProjectWorkspaceService 
         }
     }
 
-    /** Sincroniza los enlaces de tareas pendientes para el siguiente sprint. */
     private void syncCarryOverLinks() {
         List<Sprint> sprints = sprintService.findAll();
         if (sprints.size() < 2) {

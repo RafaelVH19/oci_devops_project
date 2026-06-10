@@ -101,25 +101,6 @@ if ! kubectl get secret lumen-auth-secrets -n mtdrworkshop &>/dev/null; then
     echo "  See backend/DEPLOY-AUTH.md"
 fi
 
-# Upsert the image pull secret so Kubernetes nodes can pull from our private OCIR.
-# Uses the same at.cfg auth token the build pipeline uses for docker login.
-AT_CFG="../at.cfg"
-if [ -f "$AT_CFG" ]; then
-    DOCKER_SERVER=$(echo "$DOCKER_REGISTRY" | cut -d'/' -f1)
-    DOCKER_PASS=$(cat "$AT_CFG")
-    DOCKER_USER="axtmrhnjpl9j/a00839223@tec.mx"
-    kubectl create secret docker-registry ocirsecret \
-        --docker-server="$DOCKER_SERVER" \
-        --docker-username="$DOCKER_USER" \
-        --docker-password="$DOCKER_PASS" \
-        -n mtdrworkshop \
-        --dry-run=client -o yaml | kubectl apply -f -
-    echo "Image pull secret ocirsecret upserted."
-else
-    echo "WARNING: $AT_CFG not found; skipping ocirsecret upsert."
-    echo "  Create it manually: kubectl create secret docker-registry ocirsecret ..."
-fi
-
 render_k8s_manifest() {
     local src=$1
     local dest=$2

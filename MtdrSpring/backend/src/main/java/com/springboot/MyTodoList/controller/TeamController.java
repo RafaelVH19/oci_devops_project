@@ -25,10 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Controlador encargado de administrar equipos de trabajo
- * y consultar los usuarios asociados a cada equipo.
- */
 @RestController
 public class TeamController {
 
@@ -44,7 +40,6 @@ public class TeamController {
     @Autowired
     private UserRepository userRepository;
 
-    /** Obtiene todos los equipos de trabajo junto con la información de sus usuarios asociados */
     @GetMapping(value = "/teams")
     public List<TeamWithUsersResponse> getAllTeams() {
         List<Team> teams = teamService.findAll();
@@ -55,7 +50,6 @@ public class TeamController {
         return response;
     }
 
-    /** Obtiene un equipo de trabajo específico junto con la información de sus usuarios asociados */
     @GetMapping(value = "/teams/{id}")
     public ResponseEntity<TeamWithUsersResponse> getTeamById(@PathVariable Long id) {
         ResponseEntity<Team> response = teamService.getById(id);
@@ -66,7 +60,6 @@ public class TeamController {
         return new ResponseEntity<>(buildTeamWithUsers(response.getBody()), HttpStatus.OK);
     }
 
-    /** Obtiene la lista de usuarios asociados a un equipo de trabajo específico mediante el ID del equipo */
     @GetMapping(value = "/teams/{teamId}/users")
     public ResponseEntity<List<UserSummaryResponse>> getUsersByTeam(@PathVariable Long teamId) {
         if (!teamRepository.existsById(teamId)) {
@@ -77,7 +70,6 @@ public class TeamController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    /** Obtiene la lista de equipos de trabajo asociados a un usuario específico mediante el ID del usuario */
     @GetMapping(value = "/users/{userId}/teams")
     public ResponseEntity<List<TeamWithUsersResponse>> getTeamsByUser(@PathVariable Long userId) {
         if (!userRepository.existsById(userId)) {
@@ -101,7 +93,6 @@ public class TeamController {
         return new ResponseEntity<>(teams, HttpStatus.OK);
     }
 
-    /** Registra un nuevo equipo de trabajo junto con la información de sus usuarios asociados */
     @PostMapping(value = "/teams")
     public ResponseEntity<TeamWithUsersResponse> addTeam(@RequestBody Team team) {
         Team dbTeam = teamService.add(team);
@@ -114,7 +105,6 @@ public class TeamController {
                 .body(buildTeamWithUsers(dbTeam));
     }
 
-    /** Actualiza la información de un equipo de trabajo existente junto con la información de sus usuarios asociados */
     @PutMapping(value = "/teams/{id}")
     public ResponseEntity<TeamWithUsersResponse> updateTeam(@RequestBody Team team, @PathVariable Long id) {
         Team dbTeam = teamService.update(id, team);
@@ -125,7 +115,6 @@ public class TeamController {
         return new ResponseEntity<>(buildTeamWithUsers(dbTeam), HttpStatus.OK);
     }
 
-    /** Elimina un equipo de trabajo existente junto con la información de sus usuarios asociados */
     @DeleteMapping(value = "/teams/{id}")
     public ResponseEntity<Boolean> deleteTeam(@PathVariable("id") Long id) {
         boolean deleted = teamService.delete(id);
@@ -135,16 +124,11 @@ public class TeamController {
         return new ResponseEntity<>(true, HttpStatus.OK);
     }
 
-    /**
-     * Construye una respuesta de equipo incluyendo
-     * los usuarios asociados.
-     */
     private TeamWithUsersResponse buildTeamWithUsers(Team team) {
         List<UserSummaryResponse> users = findUsersByTeamId(team.getId());
         return new TeamWithUsersResponse(team, users);
     }
 
-    /** Encuentra los usuarios asociados a un equipo específico */
     private List<UserSummaryResponse> findUsersByTeamId(Long teamId) {
         List<TeamMember> teamMembers = teamMemberRepository.findByIdTeamId(teamId);
         List<UserSummaryResponse> users = new ArrayList<>();

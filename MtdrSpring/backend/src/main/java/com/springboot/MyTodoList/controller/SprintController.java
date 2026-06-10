@@ -16,23 +16,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Controlador REST encargado de administrar los sprints
- * del sistema mediante operaciones CRUD.
- */
 @RestController
 public class SprintController {
 
     @Autowired
     private SprintService sprintService;
 
-    /** Obtiene todos los sprints registrados */
     @GetMapping(value = "/sprints")
     public List<Sprint> getAllSprints() {
         return sprintService.findAll();
     }
 
-    /** Obtiene un sprint especifico mediante su ID */
     @GetMapping(value = "/sprints/{id}")
     public ResponseEntity<Sprint> getSprintById(@PathVariable Long id) {
         ResponseEntity<Sprint> response = sprintService.getById(id);
@@ -43,7 +37,6 @@ public class SprintController {
         return new ResponseEntity<>(response.getBody(), HttpStatus.OK);
     }
 
-    /** Registra un nuevo sprint */
     @PostMapping(value = "/sprints")
     public ResponseEntity<Sprint> addSprint(@RequestBody Sprint sprint) {
         Sprint dbSprint = sprintService.add(sprint);
@@ -56,7 +49,6 @@ public class SprintController {
                 .body(dbSprint);
     }
 
-    /** Actualiza la informacion de un sprint existente */
     @PutMapping(value = "/sprints/{id}")
     public ResponseEntity<Sprint> updateSprint(@RequestBody Sprint sprint, @PathVariable Long id) {
         Sprint dbSprint = sprintService.update(id, sprint);
@@ -67,7 +59,6 @@ public class SprintController {
         return new ResponseEntity<>(dbSprint, HttpStatus.OK);
     }
 
-    /** Elimina un sprint existente */
     @DeleteMapping(value = "/sprints/{id}")
     public ResponseEntity<Boolean> deleteSprint(@PathVariable("id") Long id) {
         boolean deleted = sprintService.delete(id);

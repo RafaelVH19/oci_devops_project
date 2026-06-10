@@ -15,7 +15,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.util.Optional;
 
-/** Servicio encargado de gestionar la lógica de negocio relacionada con las invitaciones de usuarios, incluyendo la creación de usuarios temporales, generación de contraseñas, integración con el sistema de autenticación y envío de correos electrónicos de invitación. */
 @Service
 public class UserInviteService {
 
@@ -36,7 +35,6 @@ public class UserInviteService {
     @Autowired
     private AppUrlResolver appUrlResolver;
 
-    /** Procesa una invitación para un nuevo usuario */
     public InviteUserResponse invite(InviteUserRequest request, HttpServletRequest httpRequest) {
         String name = trimRequired(request.getName(), "name");
         String email = trimRequired(request.getEmail(), "email").toLowerCase();
@@ -84,7 +82,6 @@ public class UserInviteService {
                 mailResult.getErrorMessage());
     }
 
-    /** Valida y normaliza un campo obligatorio */
     private static String trimRequired(String value, String field) {
         if (value == null || value.trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, field + " is required");
@@ -92,7 +89,6 @@ public class UserInviteService {
         return value.trim();
     }
 
-    /** Genera una contraseña temporal aleatoria */
     private String generateTemporaryPassword() {
         StringBuilder password = new StringBuilder(PASSWORD_LENGTH);
         for (int i = 0; i < PASSWORD_LENGTH; i++) {

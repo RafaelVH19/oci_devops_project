@@ -17,23 +17,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Controlador encargado de administrar la relación
- * entre tareas y sprints.
- */
 @RestController
 public class SprintTaskController {
 
     @Autowired
     private SprintTaskService sprintTaskService;
-    
-    /** Obtiene todas las relaciones sprint-tarea registradas */
+
     @GetMapping(value = "/sprint-tasks")
     public List<SprintTask> getAllSprintTasks() {
         return sprintTaskService.findAll();
     }
 
-    /** Obtiene una relación sprint-tarea específica mediante sus IDs */
     @GetMapping(value = "/sprint-tasks/{sprintId}/{taskId}")
     public ResponseEntity<SprintTask> getSprintTaskById(@PathVariable Long sprintId, @PathVariable Long taskId) {
         SprintTaskId id = new SprintTaskId(sprintId, taskId);
@@ -45,7 +39,6 @@ public class SprintTaskController {
         return new ResponseEntity<>(response.getBody(), HttpStatus.OK);
     }
 
-    /** Registra una nueva relación sprint-tarea */
     @PostMapping(value = "/sprint-tasks")
     public ResponseEntity<SprintTask> addSprintTask(@RequestBody SprintTask sprintTask) {
         SprintTask dbSprintTask = sprintTaskService.add(sprintTask);
@@ -58,7 +51,6 @@ public class SprintTaskController {
                 .body(dbSprintTask);
     }
 
-    /** Actualiza la información de una relación sprint-tarea existente */
     @PutMapping(value = "/sprint-tasks/{sprintId}/{taskId}")
     public ResponseEntity<SprintTask> updateSprintTask(@RequestBody SprintTask sprintTask,
                                                         @PathVariable Long sprintId,
@@ -72,7 +64,6 @@ public class SprintTaskController {
         return new ResponseEntity<>(dbSprintTask, HttpStatus.OK);
     }
 
-    /** Elimina una relación sprint-tarea existente */
     @DeleteMapping(value = "/sprint-tasks/{sprintId}/{taskId}")
     public ResponseEntity<Boolean> deleteSprintTask(@PathVariable Long sprintId, @PathVariable Long taskId) {
         SprintTaskId id = new SprintTaskId(sprintId, taskId);
