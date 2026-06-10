@@ -283,13 +283,6 @@ public class LumiActionService {
         return created;
     }
 
-    /** Agrega miembros a un equipo o proyecto dado su ID y un conjunto de IDs de usuarios, creando las asociaciones correspondientes en la base de datos. */
-    private void addMembers(Long teamId, Set<Long> memberIds) {
-        for (Long memberId : memberIds) {
-            teamService.addMember(teamId, memberId);
-        }
-    }
-
     /** Resuelve el manager de un equipo basado en un hint de nombre y una lista de usuarios coincidentes. */
     private User resolveManagerFromHint(String managerNameHint, List<User> matched, List<User> allUsers) {
         if (managerNameHint != null && !managerNameHint.isBlank()) {
