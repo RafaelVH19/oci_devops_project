@@ -43,6 +43,8 @@ spec:
         app: todolistapp-springboot
         version: v1
     spec:
+      imagePullSecrets:
+        - name: ocirsecret
       containers:
         - name: todolistapp-springboot
           image: %DOCKER_REGISTRY%/todolistapp-springboot:%IMAGE_VERSION%
