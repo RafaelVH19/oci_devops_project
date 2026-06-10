@@ -4,12 +4,19 @@ metadata:
   name: todolistapp-springboot-service
   annotations:
     oci.oraclecloud.com/loadbalancer-policy: "IP_HASH"
+    service.beta.kubernetes.io/oci-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/oci-load-balancer-tls-secret: "tls-certificate"
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
 
   ports:
-    - port: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8080
+    - name: http
+      port: 80
       protocol: TCP
       targetPort: 8080
   selector:
