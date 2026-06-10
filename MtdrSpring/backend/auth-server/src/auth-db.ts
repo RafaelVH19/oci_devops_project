@@ -14,11 +14,13 @@ export async function syncAuthUserPassword(
   oracleUserId?: number,
 ): Promise<{ userId: string; passwordUpdated: boolean } | null> {
   const normalizedEmail = email.trim().toLowerCase();
+  console.log('[auth-db] syncAuthUserPassword called for', normalizedEmail, 'oracleUserId=', oracleUserId ? oracleUserId : 'null');
   const row = authDb
     .prepare('SELECT id, name FROM user WHERE lower(email) = ?')
     .get(normalizedEmail) as { id: string; name: string } | undefined;
 
   if (!row?.id) {
+    console.log('[auth-db] user not found in local auth DB for', normalizedEmail);
     return null;
   }
 
@@ -31,6 +33,8 @@ export async function syncAuthUserPassword(
        WHERE userId = ? AND providerId = 'credential'`,
     )
     .run(hash, now, row.id);
+
+  console.log('[auth-db] updated local account password for userId=', row.id);
 
   if (name?.trim()) {
     authDb.prepare('UPDATE user SET name = ?, updatedAt = ? WHERE id = ?').run(name.trim(), now, row.id);

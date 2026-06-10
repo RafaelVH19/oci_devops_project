@@ -9,6 +9,14 @@ import java.util.Locale;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
+/**
+ * Servicio encargado de gestionar la lógica de conversación con el modelo de IA.
+ *
+ * Procesa las solicitudes de chat, intenta manejar comandos específicos a través
+ * de LumiActionService y LumiIntentService, y si no se pueden manejar, delega
+ * la respuesta al GroqChatService para generar una respuesta basada en el historial
+ * de conversación.
+ */
 @Service
 public class GenAiChatService {
 
@@ -19,6 +27,7 @@ public class GenAiChatService {
     private final AgentOrchestrator agentOrchestrator;
     private final GroqChatService groqChatService;
 
+    /** Constructor que inyecta los servicios necesarios para manejar la lógica de conversación */
     public GenAiChatService(LumiActionService lumiActionService,
                             LumiIntentService lumiIntentService,
                             AgentOrchestrator agentOrchestrator,
@@ -29,6 +38,7 @@ public class GenAiChatService {
         this.groqChatService = groqChatService;
     }
 
+    /** Procesa una solicitud de chat y genera una respuesta adecuada basada en la lógica definida */
     public String reply(GenAiChatRequest request) {
         String message = request.getMessage() == null ? "" : request.getMessage().trim();
         if (message.isBlank()) {
@@ -87,6 +97,7 @@ public class GenAiChatService {
         return "Tell me what you'd like — create a team, project, or sprint, or ask about workload. I'll do it in the workspace.";
     }
 
+    /** Determina si el mensaje parece ser una consulta relacionada con tareas o sprints, lo que podría ser manejado por el agente. */
     private boolean looksLikeTaskQuery(String message) {
         String lower = message.toLowerCase(Locale.ROOT);
         return lower.contains("task")
@@ -99,6 +110,7 @@ public class GenAiChatService {
             || lower.contains("pendiente");
     }
 
+    /** Verifica si la respuesta del agente es útil, es decir, no es nula, no está en blanco y no es una respuesta de fallback. */
     private boolean isUsefulAgentReply(String agentReply) {
         return agentReply != null
             && !agentReply.isBlank()

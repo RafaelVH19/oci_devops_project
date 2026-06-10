@@ -38,6 +38,7 @@ function DashboardProjectLayout() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [dataSource, setDataSource] = useState('api');
+  const [allSprints, setAllSprints] = useState([]);
   const [localSprints, setLocalSprints] = useState([]);
   const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
   const [sprintForm, setSprintForm] = useState({
@@ -69,6 +70,7 @@ function DashboardProjectLayout() {
       const found = projects.find((p) => p.id === id) || null;
 
       setTasks(tasksData);
+      setAllSprints(sprintsData);
       setUsers(bundle.usersOk && Array.isArray(bundle.users) ? bundle.users : []);
       setProject(found);
       setDataSource(source);
@@ -91,15 +93,25 @@ function DashboardProjectLayout() {
 
   const sprintList = useMemo(() => {
     const byId = new Map();
-    (project?.sprints || []).forEach((s) => byId.set(s.id, s));
+    allSprints.forEach((s) => byId.set(s.id, s));
     localSprints.forEach((s) => byId.set(s.id, s));
-    return [...byId.values()].sort((a, b) => {
-      const ta = new Date(a.startDate || 0).getTime();
-      const tb = new Date(b.startDate || 0).getTime();
-      if (ta !== tb) return ta - tb;
-      return (a.id || 0) - (b.id || 0);
-    });
-  }, [project?.sprints, localSprints]);
+    const now = Date.now();
+    const sprints = [...byId.values()];
+    const active = sprints
+      .filter((s) => {
+        const start = new Date(s.startDate || 0).getTime();
+        const end = new Date(s.endDate || 0).getTime();
+        return now >= start && now <= end;
+      })
+      .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0));
+    const upcoming = sprints
+      .filter((s) => new Date(s.startDate || 0).getTime() > now)
+      .sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
+    const past = sprints
+      .filter((s) => new Date(s.endDate || 0).getTime() < now)
+      .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0));
+    return [...active, ...upcoming, ...past];
+  }, [allSprints, localSprints]);
 
   const outletContext = useMemo(
     () => ({

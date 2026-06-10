@@ -36,6 +36,13 @@ import com.springboot.MyTodoList.service.TeamMemberService;
 import com.springboot.MyTodoList.service.TeamService;
 import com.springboot.MyTodoList.service.UserService;
 
+/**
+ * Conjunto de pruebas unitarias para la clase.
+ *
+ * Estas pruebas verifican el comportamiento de los comandos del bot de Telegram,
+ * incluyendo la gestión de tareas, asignación a sprints, cierre de tareas,
+ * consultas de KPIs, interacción con el agente conversacional y validación de permisos.
+ */
 @ExtendWith(MockitoExtension.class)
 class BotActionsTest {
 
@@ -77,6 +84,13 @@ class BotActionsTest {
 
     private BotActions botActions;
 
+    /**
+     * Inicializa la instancia de y configura los valores
+     * base utilizados en todas las pruebas.
+     *
+     * Se establece un identificador de chat y un usuario de Telegram
+     * predeterminado para simular las interacciones del bot.
+     */
     @BeforeEach
     void setUp() {
         botActions = new BotActions(
@@ -93,6 +107,7 @@ class BotActionsTest {
         botActions.setTelegramUserId(TELEGRAM_ID_DEVELOPER);
     }
 
+    /** Test que verifica que el comando de inicio (/start) envíe correctamente el mensaje de bienvenida configurado para el bot. */
     @Test
     void fnWelcome() throws Exception {
         botActions.setRequestText(BotCommands.START_COMMAND.getCommand());
@@ -104,6 +119,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.WELCOME.getMessage());
     }
 
+    /** Test que comprueba que un usuario registrado en el sistema pueda asociar correctamente su cuenta de Telegram y reciba el mensaje de confirmación correspondiente. */
     @Test
     void fnRegister() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
@@ -117,6 +133,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.USER_OK.getMessage() + " DEVELOPER!");
     }
 
+    /** Test que verifica la creación correcta de una tarea a partir del comando recibido por Telegram. */
     @Test
     void fnAddTask() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
@@ -145,6 +162,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_CREATED.getMessage());
     }
 
+    /** Test que comprueba que una tarea existente pueda eliminarse correctamente mediante el comando correspondiente. */
     @Test
     void fnDeleteTask() throws Exception {
         Task task = new Task();
@@ -162,6 +180,7 @@ class BotActionsTest {
         verify(taskService).delete(1L);
     }
 
+    /** Test que verifica que el sistema informe adecuadamente cuando se intenta eliminar una tarea inexistente. */
     @Test
     void fnDeleteTaskFail() throws Exception {
         when(taskService.getById(1L)).thenReturn(ResponseEntity.ok(null));
@@ -174,6 +193,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_NOT_FOUND.getMessage());
     }
 
+    /** Test que comprueba que un comando de creación de tarea con formato inválido genere un mensaje de error para el usuario. */
     @Test
     void fnAddTaskInvalidFormatShowsError() throws Exception {
         botActions.setRequestText("/addtask \"Tarea incompleta\"");
@@ -185,6 +205,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_ERROR.getMessage());
     }
 
+    /** Test que verifica que un comando de asignación de tareas mal formado sea detectado y produzca una respuesta de error. */
     @Test
     void fnAssignTaskInvalidFormatShowsError() throws Exception {
         botActions.setRequestText("/assigntask 11");
@@ -196,6 +217,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_ASSIGN_ERROR.getMessage());
     }
 
+    /** Test que comprueba que un comando de finalización de tareas con parámetros incompletos o inválidos genere el mensaje de error esperado. */
     @Test
     void fnCompleteTaskInvalidFormatShowsError() throws Exception {
         botActions.setRequestText("/completetask 21");
@@ -207,6 +229,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_COMPLETE_ERROR.getMessage());
     }
 
+    /** Test que verifica que el sistema maneje correctamente intentos de eliminación de tareas sin proporcionar un identificador válido. */
     @Test
     void fnDeleteTaskEmptyInputShowsError() throws Exception {
         botActions.setRequestText("/deletetask ");
@@ -218,6 +241,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_DELETE_ERROR.getMessage());
     }
 
+    /** Test que comprueba la asignación de una tarea a un sprint existente. */
     @Test
     void fnAssignToSprint() throws Exception {
         Task task = new Task();
@@ -244,6 +268,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_ASSIGNED.getMessage());
     }
 
+    /** Test que verifica que una tarea en progreso pueda marcarse como completada. */
     @Test
     void fnCompleteTask() throws Exception {
         Task task = new Task();
@@ -265,6 +290,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TASK_COMPLETED.getMessage() + " (3h)");
     }
 
+    /** Test que comprueba que un desarrollador únicamente visualice las tareas que le han sido asignadas. */
     @Test
     void fnListTasksDeveloper() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
@@ -283,6 +309,7 @@ class BotActionsTest {
                 .doesNotContain("Tarea dos");
     }
 
+    /** Test que verifica la integración con el servicio de inteligencia artificial. */
     @Test
     void fnLlmResponse() throws Exception {
         when(deepSeekService.generateText(any())).thenReturn("Respuesta generada");
@@ -295,6 +322,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.LLM_RESPONSE.getMessage() + "Respuesta generada");
     }
 
+    /** Comprueba que los mensajes no asociados a comandos explícitos sean procesados por el agente conversacional. */
     @Test
     void fnElseResponse() throws Exception {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
@@ -309,6 +337,7 @@ class BotActionsTest {
         assertThat(sendMessageCaptor.getValue().getText()).isEqualTo("Hola DEVELOPER");
     }
 
+    /** Test que verifica el manejo de errores cuando el agente conversacional genera una excepción durante el procesamiento del mensaje. */
     @Test
     void fnElseHandlesAgentFailure() throws Exception {
         when(agentOrchestrator.handleMessage(any(String.class), any(String.class)))
@@ -322,6 +351,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.UNKNOWN_COMMAND.getMessage());
     }
 
+    /** Construye una instancia de usuario para pruebas con los datos mínimos necesarios para simular autenticación y autorización. */
     private User userWithTelegramId(Long id, Long telegramId, String name) {
         User user = new User();
         user.setId(id);
@@ -330,6 +360,7 @@ class BotActionsTest {
         return user;
     }
 
+    /** Genera un sprint de prueba con fechas predefinidas. */
     private Sprint sprintWithId(Long id, String name) {
         Sprint sprint = new Sprint();
         sprint.setId(id);
@@ -339,6 +370,7 @@ class BotActionsTest {
         return sprint;
     }
 
+    /** Crea una tarea de prueba asociada a un usuario específico. */
     private Task taskWithIdAndAssignment(Long id, String title, Long assignedTo, TaskStatus status) {
         Task task = new Task();
         task.setId(id);
@@ -348,6 +380,7 @@ class BotActionsTest {
         return task;
     }
 
+    /** Test que verifica que únicamente los usuarios con rol MANAGER puedan consultar los indicadores de rendimiento del equipo. */
     @Test
     void fnTeamKpis() throws Exception {
         User nonManager = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
@@ -362,6 +395,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.MANAGER_ONLY.getMessage());
     }
 
+    /** Test que comprueba el cálculo y la visualización de los KPIs de un desarrollador perteneciente al equipo del gerente. */
     @Test
     void fnShowDeveloperKpis() throws Exception {
 
@@ -402,6 +436,7 @@ class BotActionsTest {
                 .contains("Tareas pendientes: 1");
     }
 
+    /** Test que verifica que un gerente no pueda consultar métricas de desarrolladores que no pertenecen a su equipo. */
     @Test
     void fnTeamKpisDenied() throws Exception {
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
@@ -429,6 +464,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.DEVELOPER_NOT_IN_TEAM.getMessage());
     }
 
+    /** Test que comprueba que un gerente pueda visualizar todas las tareas asociadas a los miembros de su equipo. */
     @Test
     void fnTeamTasks() throws Exception {
 
@@ -480,6 +516,7 @@ class BotActionsTest {
                 .contains("Total de tareas: 3");
     }
 
+    /** Test que verifica que los usuarios sin privilegios de gerente no puedan acceder a la consulta global de tareas del equipo. */
     @Test
     void fnTeamTasksDenied() throws Exception {
         User nonManager = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
@@ -494,6 +531,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.MANAGER_ONLY.getMessage());
     }
 
+    /** Test que comprueba el comportamiento cuando un equipo no posee tareas registradas. */
     @Test
     void fnTeamTasksEmpty() throws Exception {
         User manager = userWithTelegramId(USER_ID_MANAGER, TELEGRAM_ID_MANAGER, "MANAGER");
@@ -516,6 +554,7 @@ class BotActionsTest {
                 .isEqualTo(BotMessages.TEAM_TASKS_EMPTY.getMessage());
     }
 
+    /** Construye una entidad de equipo para escenarios de prueba. */
     private Team teamWithIdAndManager(Long id, String name, Long managerId) {
         Team team = new Team();
         team.setId(id);

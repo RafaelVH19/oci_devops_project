@@ -8,12 +8,15 @@
     "start": "tsx src/index.ts",
     "migrate": "npx @better-auth/cli@latest migrate --config ./src/auth.ts --yes",
     "seed": "tsx scripts/seed-dev-user.ts",
-    "reset-password": "tsx scripts/reset-dev-password.ts"
+    "reset-password": "tsx scripts/reset-dev-password.ts",
+    "dump-users": "tsx scripts/dump-users.ts",
+    "delete-user": "tsx scripts/delete-user.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
     "better-auth": "^1.6.0",
     "better-sqlite3": "^12.0.0",
+    "node-fetch": "^3.3.1",
     "dotenv": "^16.5.0",
     "hono": "^4.7.10"
   },

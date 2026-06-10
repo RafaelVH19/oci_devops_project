@@ -10,10 +10,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
+// New Imports for Security
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+
+/**
+ * Controlador REST encargado de administrar usuarios,
+ * invitaciones y operaciones de autenticación.
+ */
 @RestController
 public class UserController {
     @Autowired
@@ -23,11 +32,14 @@ public class UserController {
     private UserInviteService userInviteService;
 
     //@CrossOrigin
+
+    /** Obtiene todos los usuarios */
     @GetMapping(value = "/users")
     public List<User> getAllUsers(){
         return userService.findAll();
     }
 
+    /** Obtiene un usuario por su dirección de correo electrónico */
     @GetMapping(value = "/users/by-email")
     public ResponseEntity<User> getUserByEmail(@RequestParam String email) {
         return userService.findByEmail(email)
@@ -35,6 +47,7 @@ public class UserController {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    /** Genera una invitación para un nuevo usuario */
     @PostMapping(value = "/invite-user")
     public ResponseEntity<InviteUserResponse> inviteUser(
             @RequestBody InviteUserRequest request,
@@ -44,6 +57,8 @@ public class UserController {
     }
 
     //@CrossOrigin
+
+    /** Obtiene un usuario por su ID */
     @GetMapping(value = "/users/{id}")
     public ResponseEntity<User> getUserById(@PathVariable int id){
         try{
@@ -54,6 +69,8 @@ public class UserController {
         }
     }
     //@CrossOrigin
+
+    /** Agrega un nuevo usuario */
     @PostMapping(value = "/adduser")
     public ResponseEntity<User> addUser(@RequestBody User newUser) throws Exception{
         User dbUser = userService.addUser(newUser);
@@ -66,6 +83,8 @@ public class UserController {
     }
     
     //@CrossOrigin
+
+    /** Actualiza un usuario */
     @PutMapping(value = "updateUser/{id}")
     public ResponseEntity<User> updateUser(@RequestBody User user, @PathVariable int id){
         try{
@@ -77,6 +96,8 @@ public class UserController {
         }
     }
     //@CrossOrigin
+
+    /** Elimina un usuario */
     @DeleteMapping(value = "deleteUser/{id}")
     public ResponseEntity<Boolean> deleteUser(@PathVariable("id") int id){
         Boolean flag = false;
@@ -88,11 +109,21 @@ public class UserController {
         }
     }
 
-
+    /** Metodo auxiliar utilizado para pruebas unitarias */
     @GetMapping(value = "/unitTestAdd")
     public User test(){
         return userService.test();
     }
 
+    // New Secured Endpoint
+
+    /** Endpoint protegido que verifica la autenticación del usuario mediante Spring Security */
+    @GetMapping("/api/secured/test")
+    @PreAuthorize("isAuthenticated()") // This annotation protects the endpoint
+    public ResponseEntity<String> getSecuredMessage() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = authentication.getName(); // This will be the email from the JWT
+        return ResponseEntity.ok("Hello, " + userEmail + "! You accessed a secured endpoint.");
+    }
 
 }

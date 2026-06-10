@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { betterAuth } from 'better-auth';
-import { admin } from 'better-auth/plugins';
+import { admin, jwt } from 'better-auth/plugins';
 import { authDbPath } from './auth-db';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,5 +34,5 @@ export const auth = betterAuth({
     minPasswordLength: 8,
   },
   disabledPaths: ['/sign-up/email'],
-  plugins: [admin()],
+  plugins: [admin(), jwt()],
 });
