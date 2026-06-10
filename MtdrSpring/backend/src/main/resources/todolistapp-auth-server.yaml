@@ -58,6 +58,9 @@ spec:
             # URL pública de la app (mismo host que el LoadBalancer de Spring)
             - name: BETTER_AUTH_URL
               value: "%LUMEN_PUBLIC_URL%"
+            # Internal cluster URL so oracle-sync can reach Spring on startup
+            - name: SPRING_URL
+              value: "http://todolistapp-springboot-service:80"
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
