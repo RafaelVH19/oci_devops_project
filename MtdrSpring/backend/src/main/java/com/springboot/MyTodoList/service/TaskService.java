@@ -41,22 +41,14 @@ public class TaskService {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-<<<<<<< Updated upstream
-=======
-    /** Agrega una nueva tarea a la base de datos, genera su embedding y lo almacena en la columna INSIGHT. */
     @Transactional
->>>>>>> Stashed changes
     public Task add(Task task) {
         Task saved = taskRepository.saveAndFlush(task);
         embedAndStore(saved.getId(), saved.getTitle(), saved.getDescription());
         return saved;
     }
 
-<<<<<<< Updated upstream
-=======
-    /** Actualiza una tarea existente y regenera el embedding si el título o la descripción cambiaron. */
     @Transactional
->>>>>>> Stashed changes
     public Task update(Long id, Task updated) {
         Optional<Task> task = taskRepository.findById(id);
         if (task.isPresent()) {
