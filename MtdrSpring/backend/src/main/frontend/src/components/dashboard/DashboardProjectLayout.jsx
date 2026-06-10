@@ -38,6 +38,7 @@ function DashboardProjectLayout() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [dataSource, setDataSource] = useState('api');
+  const [allSprints, setAllSprints] = useState([]);
   const [localSprints, setLocalSprints] = useState([]);
   const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
   const [sprintForm, setSprintForm] = useState({
@@ -69,6 +70,7 @@ function DashboardProjectLayout() {
       const found = projects.find((p) => p.id === id) || null;
 
       setTasks(tasksData);
+      setAllSprints(sprintsData);
       setUsers(bundle.usersOk && Array.isArray(bundle.users) ? bundle.users : []);
       setProject(found);
       setDataSource(source);
@@ -91,6 +93,7 @@ function DashboardProjectLayout() {
 
   const sprintList = useMemo(() => {
     const byId = new Map();
+    allSprints.forEach((s) => byId.set(s.id, s));
     (project?.sprints || []).forEach((s) => byId.set(s.id, s));
     localSprints.forEach((s) => byId.set(s.id, s));
     return [...byId.values()].sort((a, b) => {
@@ -99,7 +102,7 @@ function DashboardProjectLayout() {
       if (ta !== tb) return ta - tb;
       return (a.id || 0) - (b.id || 0);
     });
-  }, [project?.sprints, localSprints]);
+  }, [allSprints, project?.sprints, localSprints]);
 
   const outletContext = useMemo(
     () => ({
