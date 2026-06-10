@@ -1,16 +1,13 @@
 package com.springboot.MyTodoList.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.PrePersist;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "USERS")
@@ -21,26 +18,55 @@ public class User {
     @Column(name = "ID")
     private Long id;
 
+    @NotBlank(message = "Name is required")
+    @Size(max = 100)
     @Column(name = "NAME", nullable = false, length = 100)
     private String name;
 
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email must be valid")
+    @Size(max = 150)
     @Column(name = "EMAIL", nullable = false, length = 150)
     private String email;
 
+    @NotBlank(message = "Telegram ID is required")
+    @Size(max = 50)
     @Column(name = "TELEGRAM_ID", nullable = false, length = 50)
     private String telegramId;
 
+    @NotBlank(message = "Role is required")
+    @Size(max = 20)
     @Column(name = "ROLE", nullable = false, length = 20)
     private String role;
 
+    @NotBlank(message = "Work mode is required")
+    @Size(max = 20)
     @Column(name = "WORK_MODE", nullable = false, length = 20)
     private String workMode;
 
+    /**
+     * Stored in Oracle as 0/1
+     */
+    @NotNull(message = "Active status is required")
     @Column(name = "IS_ACTIVE", nullable = false)
     private Integer isActive;
 
     @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @NotBlank(message = "Password is required")
+    @Size(max = 255)
+    @Column(name = "PASSWORD_HASH", nullable = false, length = 255)
+    private String passwordHash;
+
+    public User() {}
+
+    public User(Long id, String email, String role) {
+        this.id = id;
+        this.email = email;
+        this.role = role;
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -49,24 +75,9 @@ public class User {
         }
     }
 
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @Column(name = "PASSWORD_HASH", nullable = false, length = 255)
-    private String passwordHash;
-
-    public User() {
-    }
-
-    public User(Long id, String telegramId, String passwordHash) {
-        this.id = id;
-        this.telegramId = telegramId;
-        this.passwordHash = passwordHash;
-    }
-
-    public User(long id, String telegramId, String passwordHash) {
-        this.id = id;
-        this.telegramId = telegramId;
-        this.passwordHash = passwordHash;
-    }
+    // =======================
+    // Getters & Setters
+    // =======================
 
     public Long getId() {
         return id;
@@ -122,6 +133,13 @@ public class User {
 
     public void setIsActive(Integer isActive) {
         this.isActive = isActive;
+    }
+
+    /**
+     * Clean boolean interpretation for business logic
+     */
+    public boolean isActive() {
+        return isActive != null && isActive == 1;
     }
 
     public LocalDateTime getCreatedAt() {

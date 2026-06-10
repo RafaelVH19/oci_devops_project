@@ -1,14 +1,28 @@
 package com.springboot.MyTodoList.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 public class InviteUserRequest {
 
+    @NotBlank(message = "Name is required")
     private String name;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email must be valid")
     private String email;
+
     private String role = "DEVELOPER";
+
     private String workMode = "REMOTE";
+
     private String invitedByName;
+
+    @Email(message = "Invited by email must be valid")
     private String invitedByEmail;
+
     private String teamName;
+
     private String appOrigin;
 
     public String getName() {
