@@ -64,7 +64,7 @@ resolve_lumen_public_url() {
     local lb_host
     lb_host=$(get_load_balancer_host)
     if [ -n "$lb_host" ]; then
-        export LUMEN_PUBLIC_URL="http://${lb_host}"
+        export LUMEN_PUBLIC_URL="https://${lb_host}"
         echo "LUMEN_PUBLIC_URL desde LoadBalancer: ${LUMEN_PUBLIC_URL}"
         return 0
     fi
@@ -78,7 +78,7 @@ wait_for_load_balancer_ip() {
     while [ "$i" -lt 36 ]; do
         lb_host=$(get_load_balancer_host)
         if [ -n "$lb_host" ]; then
-            export LUMEN_PUBLIC_URL="http://${lb_host}"
+            export LUMEN_PUBLIC_URL="https://${lb_host}"
             echo "IP asignada: ${LUMEN_PUBLIC_URL}"
             if command -v state_set &>/dev/null; then
                 state_set LUMEN_PUBLIC_URL "$LUMEN_PUBLIC_URL" || true
