@@ -15,7 +15,7 @@ function Login() {
             Welcome back
           </h1>
           <p className="mt-2 text-sm text-[#2a1814]/60 sm:text-base">
-            Welcome back! Please enter your details.
+            Please enter your details.
           </p>
 
           <LoginForm />
