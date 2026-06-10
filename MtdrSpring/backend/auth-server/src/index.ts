@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { auth } from './auth';
 import { syncAuthUserPassword } from './auth-db';
+import { syncUsersFromSpring } from './oracle-sync';
 
 const app = new Hono();
 const port = Number(process.env.AUTH_SERVER_PORT ?? 3001);
@@ -46,6 +47,7 @@ app.post('/internal/users', async (c) => {
     name?: string;
     oracleUserId?: number;
   }>();
+  console.log('[auth-server] /internal/users called with', { email: body.email, oracleUserId: body.oracleUserId });
   const email = body.email?.trim();
   const password = body.password;
   const name = body.name?.trim();
@@ -70,6 +72,7 @@ app.post('/internal/users', async (c) => {
     });
 
     if (createResult.error) {
+      console.log('[auth-server] createUser returned error:', createResult.error);
       return c.json({ error: createResult.error }, 400);
     }
 
@@ -77,7 +80,7 @@ app.post('/internal/users', async (c) => {
   } catch {
     // User already exists — sync password below
   }
-
+  console.log('[auth-server] attempting password sync for existing user', email);
   const synced = await syncAuthUserPassword(email, password, name, oracleUserId);
   if (!synced) {
     return c.json({ error: 'Could not create or update user' }, 400);
@@ -94,5 +97,15 @@ app.get('/health', (c) => c.json({ ok: true }));
 serve({ fetch: app.fetch, port }, () => {
   console.log(`Auth server listening on http://localhost:${port}`);
 });
+
+// Run a background sync from the Spring Oracle user table on startup.
+(async () => {
+  try {
+    await syncUsersFromSpring();
+    console.log('Initial Oracle -> Better Auth sync complete');
+  } catch (e) {
+    console.warn('Initial sync failed:', e);
+  }
+})();
 
 

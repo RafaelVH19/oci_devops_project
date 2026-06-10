@@ -33,6 +33,6 @@ export const auth = betterAuth({
     disableSignUp: true,
     minPasswordLength: 8,
   },
-    disabledPaths: ['/sign-up/email'],
+  disabledPaths: ['/sign-up/email'],
   plugins: [admin(), jwt()],
 });
