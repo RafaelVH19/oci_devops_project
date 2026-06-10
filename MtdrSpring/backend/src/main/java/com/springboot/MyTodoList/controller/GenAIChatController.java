@@ -6,6 +6,8 @@ import java.util.Map;
 // 2. Imports de Spring Web y Core
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,14 +21,30 @@ import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 // 5. Import de Project Reactor (Para el manejo de flujos asíncronos con Flux)
 import reactor.core.publisher.Flux;
 
+<<<<<<< Updated upstream
+=======
+// 6. Imports para el endpoint de chat de Lumi
+import com.springboot.MyTodoList.controller.dto.GenAiChatRequest;
+import com.springboot.MyTodoList.controller.dto.GenAiChatResponse;
+import com.springboot.MyTodoList.service.GenAiChatService;
+
+>>>>>>> Stashed changes
 @RestController
 public class GenAIChatController {
 
     private final GoogleGenAiChatModel chatModel;
+    private final GenAiChatService genAiChatService;
 
     @Autowired
-    public GenAIChatController(GoogleGenAiChatModel chatModel) {
+    public GenAIChatController(GoogleGenAiChatModel chatModel, GenAiChatService genAiChatService) {
         this.chatModel = chatModel;
+        this.genAiChatService = genAiChatService;
+    }
+
+    /** Lumi chat endpoint used by the frontend. */
+    @PostMapping("/api/genai/chat")
+    public GenAiChatResponse chat(@RequestBody GenAiChatRequest request) {
+        return new GenAiChatResponse(genAiChatService.reply(request));
     }
 
     @GetMapping("/ai/generate")

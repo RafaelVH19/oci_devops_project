@@ -14,6 +14,7 @@ public class ParsedIntent {
     private boolean clarificationNeeded;
     private String clarificationQuestion;
     private String responseText;
+    private String queryText;
 
     public IntentType getIntent() {
     /** Return the detected intent type for the parsed message. */
@@ -133,5 +134,15 @@ public class ParsedIntent {
     public void setIsBug(Boolean isBug) {
     /** Mark whether the parsed task should be treated as a bug. */
         this.isBug = isBug;
+    }
+
+    public String getQueryText() {
+    /** Return the raw query text used for semantic vector search. */
+        return queryText;
+    }
+
+    public void setQueryText(String queryText) {
+    /** Set the raw query text to embed for semantic task search. */
+        this.queryText = queryText;
     }
 }

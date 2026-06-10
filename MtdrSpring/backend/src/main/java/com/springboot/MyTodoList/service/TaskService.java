@@ -6,17 +6,30 @@ import com.springboot.MyTodoList.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.ai.embedding.EmbeddingModel;
 
+import java.io.StringReader;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class TaskService {
 
+    private final TaskRepository taskRepository;
+    private final EmbeddingModel embeddingModel;
+    private final JdbcTemplate jdbcTemplate;
+
     @Autowired
-    private TaskRepository taskRepository;
+    public TaskService(TaskRepository taskRepository, EmbeddingModel embeddingModel, JdbcTemplate jdbcTemplate) {
+        this.taskRepository = taskRepository;
+        this.embeddingModel = embeddingModel;
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     public List<Task> findAll() {
         return taskRepository.findAll();
@@ -28,15 +41,30 @@ public class TaskService {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+<<<<<<< Updated upstream
+=======
+    /** Agrega una nueva tarea a la base de datos, genera su embedding y lo almacena en la columna INSIGHT. */
+    @Transactional
+>>>>>>> Stashed changes
     public Task add(Task task) {
-        return taskRepository.save(task);
+        Task saved = taskRepository.saveAndFlush(task);
+        embedAndStore(saved.getId(), saved.getTitle(), saved.getDescription());
+        return saved;
     }
 
+<<<<<<< Updated upstream
+=======
+    /** Actualiza una tarea existente y regenera el embedding si el título o la descripción cambiaron. */
+    @Transactional
+>>>>>>> Stashed changes
     public Task update(Long id, Task updated) {
         Optional<Task> task = taskRepository.findById(id);
         if (task.isPresent()) {
             Task current = task.get();
             TaskStatus previousStatus = current.getStatus();
+            boolean contentChanged = !equals(current.getTitle(), updated.getTitle())
+                    || !equals(current.getDescription(), updated.getDescription());
+
             current.setTitle(updated.getTitle());
             current.setDescription(updated.getDescription());
             current.setStatus(updated.getStatus());
@@ -57,8 +85,13 @@ public class TaskService {
                 current.setCompletedDate(null);
             }
             current.setUpdatedAt(LocalDateTime.now());
-            current.setInsight(updated.getInsight());
-            return taskRepository.save(current);
+            Task saved = taskRepository.saveAndFlush(current);
+
+            if (contentChanged) {
+                embedAndStore(saved.getId(), saved.getTitle(), saved.getDescription());
+            }
+
+            return saved;
         }
         return null;
     }
@@ -70,5 +103,29 @@ public class TaskService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private void embedAndStore(Long taskId, String title, String description) {
+        String text = buildEmbeddingText(title, description);
+        float[] vector = embeddingModel.embed(text);
+        String vectorStr = Arrays.toString(vector);
+        jdbcTemplate.update(
+            "UPDATE TASKS SET INSIGHT = TO_VECTOR(TO_CLOB(?)) WHERE ID = ?",
+            ps -> {
+                ps.setClob(1, new StringReader(vectorStr));
+                ps.setLong(2, taskId);
+            }
+        );
+    }
+
+    private String buildEmbeddingText(String title, String description) {
+        if (description == null || description.isBlank()) return title == null ? "" : title;
+        if (title == null || title.isBlank()) return description;
+        return title + ". " + description;
+    }
+
+    private boolean equals(String a, String b) {
+        if (a == null) return b == null;
+        return a.equals(b);
     }
 }

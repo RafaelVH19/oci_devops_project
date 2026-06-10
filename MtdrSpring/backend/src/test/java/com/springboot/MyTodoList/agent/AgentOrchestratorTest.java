@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.springboot.MyTodoList.service.TaskSemanticSearchService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -19,15 +20,18 @@ class AgentOrchestratorTest {
     @Mock
     private ProjectWorkspaceService workspaceService;
 
+    @Mock
+    private TaskSemanticSearchService semanticSearchService;
+
         private AgentOrchestrator newOrchestrator() {
-                return new AgentOrchestrator(llmIntentParser, workspaceService);
+                return new AgentOrchestrator(llmIntentParser, workspaceService, semanticSearchService);
         }
 
     @Test
     void constructorRejectsNullDependencies() {
-        assertThatThrownBy(() -> new AgentOrchestrator(null, workspaceService))
+        assertThatThrownBy(() -> new AgentOrchestrator(null, workspaceService, semanticSearchService))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new AgentOrchestrator(llmIntentParser, null))
+        assertThatThrownBy(() -> new AgentOrchestrator(llmIntentParser, null, semanticSearchService))
                 .isInstanceOf(NullPointerException.class);
     }
 

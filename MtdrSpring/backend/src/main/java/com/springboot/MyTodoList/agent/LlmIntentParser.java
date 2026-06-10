@@ -102,9 +102,10 @@ public class LlmIntentParser implements IntentParser {
             + "GET_DEVELOPER_KPI\n"
             + "CURRENT_SPRINT_SUMMARY\n"
             + "TEAM_LOAD_SUMMARY\n"
+            + "SEMANTIC_TASK_SEARCH\n"
             + "UNKNOWN\n\n"
             + "Devuelve JSON con estas claves:\n"
-            + "intent, assignee, status, title, expectedHours, isBug, sprintName, taskId, developerName, clarificationNeeded, clarificationQuestion, responseText.\n\n"
+            + "intent, assignee, status, title, expectedHours, isBug, sprintName, taskId, developerName, clarificationNeeded, clarificationQuestion, responseText, queryText.\n\n"
             + "Reglas:\n"
             + "- Si el usuario pide una accion ejecutable y hay informacion suficiente, usa intent UNKNOWN y coloca en responseText el comando canonico exacto a ejecutar.\n"
             + "- Si el usuario pide una consulta que ya conoce el sistema, usa el intent correspondiente y deja responseText vacio.\n"
@@ -119,7 +120,17 @@ public class LlmIntentParser implements IntentParser {
             + "- 'borra la tarea revisar API' => intent DELETE_TASK, title='revisar API'\n"
             + "- 'muestrame las tareas de ana' => intent LIST_TASKS_BY_ASSIGNEE, assignee='Ana'\n"
             + "- 'que tareas siguen en progreso' => intent LIST_TASKS_BY_STATUS, status='IN_PROGRESS'\n"
-            + "- 'como uso el bot para completar una tarea' => intent UNKNOWN, responseText con una explicacion breve del comando /completetask\n";
+            + "- 'como uso el bot para completar una tarea' => intent UNKNOWN, responseText con una explicacion breve del comando /completetask\n"
+            + "- 'que tareas son las mas importantes' => intent SEMANTIC_TASK_SEARCH, queryText='que tareas son las mas importantes'\n"
+            + "- 'cuales son las tareas mas faciles de resolver' => intent SEMANTIC_TASK_SEARCH, queryText='tareas faciles de resolver'\n"
+            + "- 'dame una tarea relacionada con el backend' => intent SEMANTIC_TASK_SEARCH, queryText='tarea relacionada con backend'\n"
+            + "- 'hay tareas sobre la base de datos' => intent SEMANTIC_TASK_SEARCH, queryText='tareas sobre base de datos'\n"
+            + "- 'what tasks seem most important' => intent SEMANTIC_TASK_SEARCH, queryText='most important tasks'\n"
+            + "- 'give me the easiest tasks to fix' => intent SEMANTIC_TASK_SEARCH, queryText='easiest tasks to fix'\n"
+            + "- 'are there any backend related tasks' => intent SEMANTIC_TASK_SEARCH, queryText='backend tasks'\n\n"
+            + "Regla adicional para SEMANTIC_TASK_SEARCH:\n"
+            + "- Usa este intent cuando el usuario pide tareas usando criterios cualitativos, tematicos o de similitud (importante, facil, relacionado con, backend, frontend, base de datos, etc.).\n"
+            + "- Pon en queryText una descripcion concisa del tipo de tarea que busca, ideal para busqueda semantica.\n";
 
         List<Map<String, Object>> messages = buildMessages(systemPrompt, messageText);
 
