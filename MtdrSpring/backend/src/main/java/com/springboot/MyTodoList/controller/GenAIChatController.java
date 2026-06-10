@@ -21,14 +21,11 @@ import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 // 5. Import de Project Reactor (Para el manejo de flujos asíncronos con Flux)
 import reactor.core.publisher.Flux;
 
-<<<<<<< Updated upstream
-=======
 // 6. Imports para el endpoint de chat de Lumi
 import com.springboot.MyTodoList.controller.dto.GenAiChatRequest;
 import com.springboot.MyTodoList.controller.dto.GenAiChatResponse;
 import com.springboot.MyTodoList.service.GenAiChatService;
 
->>>>>>> Stashed changes
 @RestController
 public class GenAIChatController {
 
