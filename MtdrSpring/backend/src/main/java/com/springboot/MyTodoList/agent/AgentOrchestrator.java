@@ -3,9 +3,11 @@ package com.springboot.MyTodoList.agent;
 import com.springboot.MyTodoList.service.TaskSemanticSearchService;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,14 +28,20 @@ public class AgentOrchestrator {
     }
     /** Convenience overload: handle a message without specifying a user role. */
     public String handleMessage(String messageText) {
-        return handleMessage(messageText, null);
+        return handleMessage(messageText, null, null);
+    }
+
+    /** Convenience overload: handle a message with a role but no user name. */
+    public String handleMessage(String messageText, String userRole) {
+        return handleMessage(messageText, userRole, null);
     }
 
     /**
      * Process an incoming message and route it to the appropriate action.
-     * Returns a user-facing response string based on the parsed intent.
+     * When userRole is DEVELOPER, all task results are scoped to userName only
+     * and completed (DONE) tasks are excluded from actionable queries.
      */
-    public String handleMessage(String messageText, String userRole) {
+    public String handleMessage(String messageText, String userRole, String userName) {
         if (messageText == null || messageText.isBlank()) {
             return DEFAULT_RESPONSE;
         }
@@ -51,21 +59,49 @@ public class AgentOrchestrator {
             return parsedIntent.getClarificationQuestion();
         }
 
+        boolean isDeveloper = "DEVELOPER".equalsIgnoreCase(userRole);
+
         return switch (parsedIntent.getIntent()) {
             case HELP -> helpText(userRole);
-            case LIST_TASKS -> formatTasks("Estas son las tareas registradas:", safeTasks(workspaceService.findAllTasks()));
-            case LIST_TASKS_BY_ASSIGNEE -> formatTasks("Estas son las tareas de " + safe(parsedIntent.getAssignee()) + ":",
-                safeTasks(workspaceService.findTasksByAssignee(parsedIntent.getAssignee())));
-            case LIST_TASKS_BY_STATUS -> formatTasks("Estas son las tareas con estado " + safe(parsedIntent.getStatus()) + ":",
-                safeTasks(workspaceService.findTasksByStatus(parsedIntent.getStatus())));
+            case LIST_TASKS -> isDeveloper
+                ? formatTasks("Tus tareas pendientes:", developerTasks(userName))
+                : formatTasks("Estas son las tareas registradas:", safeTasks(workspaceService.findAllTasks()));
+            case LIST_TASKS_BY_ASSIGNEE -> isDeveloper
+                ? formatTasks("Tus tareas pendientes:", developerTasks(userName))
+                : formatTasks("Estas son las tareas de " + safe(parsedIntent.getAssignee()) + ":",
+                    safeTasks(workspaceService.findTasksByAssignee(parsedIntent.getAssignee())));
+            case LIST_TASKS_BY_STATUS -> isDeveloper
+                ? formatTasks("Tus tareas con estado " + safe(parsedIntent.getStatus()) + ":",
+                    filterByStatus(developerTasks(userName), parsedIntent.getStatus()))
+                : formatTasks("Estas son las tareas con estado " + safe(parsedIntent.getStatus()) + ":",
+                    safeTasks(workspaceService.findTasksByStatus(parsedIntent.getStatus())));
             case CREATE_TASK -> createTask(parsedIntent);
             case DELETE_TASK -> deleteTaskResponse(parsedIntent);
             case GET_DEVELOPER_KPI -> getDeveloperKpiResponse(parsedIntent);
             case CURRENT_SPRINT_SUMMARY -> sprintSummary();
             case TEAM_LOAD_SUMMARY -> teamLoadSummary();
-            case SEMANTIC_TASK_SEARCH -> semanticSearch(parsedIntent);
+            case SEMANTIC_TASK_SEARCH -> semanticSearch(parsedIntent, isDeveloper, userName);
             default -> DEFAULT_RESPONSE;
         };
+    }
+
+    /** Returns non-DONE tasks assigned to the given user name. */
+    private List<TaskItem> developerTasks(String userName) {
+        List<TaskItem> tasks = userName != null && !userName.isBlank()
+            ? safeTasks(workspaceService.findTasksByAssignee(userName))
+            : List.of();
+        return tasks.stream()
+            .filter(t -> !"DONE".equalsIgnoreCase(t.getStatus()))
+            .collect(Collectors.toList());
+    }
+
+    /** Filters a task list to those matching the given status string. */
+    private List<TaskItem> filterByStatus(List<TaskItem> tasks, String status) {
+        if (status == null || status.isBlank()) return tasks;
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        return tasks.stream()
+            .filter(t -> normalized.equals(t.getStatus()))
+            .collect(Collectors.toList());
     }
 
     /** Create a new task from the parsed intent and return a confirmation message. */
@@ -180,8 +216,9 @@ public class AgentOrchestrator {
         return joiner.toString().trim();
     }
 
-    /** Run a semantic vector search and format the matching tasks. */
-    private String semanticSearch(ParsedIntent parsedIntent) {
+    /** Run a semantic vector search and format the matching tasks.
+     *  For DEVELOPER users, results are scoped to their own non-DONE tasks. */
+    private String semanticSearch(ParsedIntent parsedIntent, boolean isDeveloper, String userName) {
         String query = parsedIntent.getQueryText();
         if (query == null || query.isBlank()) {
             query = parsedIntent.getResponseText();
@@ -190,6 +227,14 @@ public class AgentOrchestrator {
             return "Necesito saber qué tipo de tarea buscas. Por ejemplo: \"tareas relacionadas con el backend\".";
         }
         List<TaskItem> results = semanticSearchService.findSimilarTasks(query);
+        if (isDeveloper && userName != null && !userName.isBlank()) {
+            String lowerName = userName.trim().toLowerCase(Locale.ROOT);
+            results = results.stream()
+                .filter(t -> t.getAssignee() != null
+                    && t.getAssignee().toLowerCase(Locale.ROOT).contains(lowerName))
+                .filter(t -> !"DONE".equalsIgnoreCase(t.getStatus()))
+                .collect(Collectors.toList());
+        }
         return formatTasks("Tareas más relevantes para \"" + query + "\":", results);
     }
 
