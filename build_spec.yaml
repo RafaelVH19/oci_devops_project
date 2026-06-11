@@ -69,12 +69,4 @@ steps:
       ls -l;
       kubectl config view;
       source undeploy.sh;
-
-  - type: Command
-    name: "Deploy"
-    command: export PATH=$PATH:$HOME/k8s;
-      export KUBECONFIG=$HOME/.kube/config;
-      cd MtdrSpring;
-      source env.sh;
-      cd backend;
-      source deploy.sh;
+      
