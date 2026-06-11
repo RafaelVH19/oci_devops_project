@@ -199,6 +199,10 @@ public class LumiActionService {
             ? findSprintByName(plan.getSprintName())
             : null;
 
+        boolean dependencyRequested = plan.getDependsOnTaskTitle() != null
+            && !plan.getDependsOnTaskTitle().isBlank();
+        Task dependency = dependencyRequested ? findTaskByTitle(plan.getDependsOnTaskTitle()) : null;
+
         Task task = new Task();
         task.setTitle(plan.getTaskTitle().trim());
         task.setDescription(plan.getTaskDescription() != null ? plan.getTaskDescription().trim() : null);
@@ -209,6 +213,9 @@ public class LumiActionService {
         task.setIsBug(false);
         task.setAssignedTo(assignee.getId());
         task.setCreatedBy(assignee.getId());
+        if (dependency != null) {
+            task.setDependsOnId(dependency.getId());
+        }
         Task created = taskService.add(task);
 
         StringBuilder reply = new StringBuilder("Done — I created the task **")
@@ -216,6 +223,15 @@ public class LumiActionService {
             .append("**:\n- Assignee: ").append(safeName(assignee))
             .append("\n- Estimate: ").append(task.getExpectedHours()).append("h")
             .append("\n- Priority: ").append(task.getPriority());
+
+        if (dependency != null) {
+            reply.append("\n- Depends on: **").append(dependency.getTitle())
+                .append("** (it stays blocked until that one is done)");
+        } else if (dependencyRequested) {
+            reply.append("\n- Dependency: I couldn't find a task matching \"")
+                .append(plan.getDependsOnTaskTitle().trim())
+                .append("\", so I created it without a dependency.");
+        }
 
         if (sprint != null) {
             com.springboot.MyTodoList.model.SprintTask link = new com.springboot.MyTodoList.model.SprintTask();
@@ -274,6 +290,18 @@ public class LumiActionService {
         }
 
         Task task = matches.get(0);
+
+        if (task.getDependsOnId() != null) {
+            Task blocker = taskService.findAll().stream()
+                .filter(candidate -> task.getDependsOnId().equals(candidate.getId()))
+                .findFirst()
+                .orElse(null);
+            if (blocker != null && blocker.getStatus() != TaskStatus.DONE) {
+                return "**" + task.getTitle() + "** is blocked by **" + blocker.getTitle()
+                    + "** — that task has to be completed first.";
+            }
+        }
+
         Integer hours = plan.getHoursDone() != null
             ? plan.getHoursDone()
             : (task.getExpectedHours() != null ? task.getExpectedHours() : task.getHoursDone());
@@ -349,6 +377,20 @@ public class LumiActionService {
             }
         }
         return null;
+    }
+
+    private Task findTaskByTitle(String titleHint) {
+        String hint = normalize(titleHint);
+        if (hint.isEmpty()) {
+            return null;
+        }
+        return taskService.findAll().stream()
+            .filter(task -> {
+                String title = normalize(task.getTitle());
+                return !title.isEmpty() && (title.contains(hint) || hint.contains(title));
+            })
+            .findFirst()
+            .orElse(null);
     }
 
     private Sprint findSprintByName(String sprintNameHint) {

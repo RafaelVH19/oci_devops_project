@@ -41,7 +41,7 @@ public class GenAIChatController {
     /** Lumi chat endpoint used by the frontend. */
     @PostMapping("/api/genai/chat")
     public GenAiChatResponse chat(@RequestBody GenAiChatRequest request) {
-        return new GenAiChatResponse(genAiChatService.reply(request));
+        return genAiChatService.reply(request);
     }
 
     @GetMapping("/ai/generate")

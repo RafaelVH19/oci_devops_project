@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bug, ListTodo, X } from 'lucide-react';
-import DevTaskForm, { emptyTaskForm, taskToFormData } from './DevTaskForm';
+import DevTaskForm, { buildDependencyOptions, emptyTaskForm, taskToFormData } from './DevTaskForm';
 import { saveTaskEdits } from './devTaskApi';
 
-export default function EditTaskModal({ open, task, sprints, onClose, onSaved, onError, assigneeOptions }) {
+export default function EditTaskModal({ open, task, sprints, onClose, onSaved, onError, assigneeOptions, tasks }) {
   const [openMenu, setOpenMenu] = useState(null);
   const [formData, setFormData] = useState(emptyTaskForm);
   const [saving, setSaving] = useState(false);
@@ -40,6 +40,7 @@ export default function EditTaskModal({ open, task, sprints, onClose, onSaved, o
     { value: '', label: 'No sprint' },
     ...sprints.map((s) => ({ value: String(s.id), label: s.name })),
   ];
+  const dependencyOptions = buildDependencyOptions(tasks ?? [], task.id, task.dependsOnId ?? null);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -105,10 +106,12 @@ export default function EditTaskModal({ open, task, sprints, onClose, onSaved, o
             setOpenMenu={setOpenMenu}
             sprintOptions={sprintOptions}
             assigneeOptions={assigneeOptions}
+            dependencyOptions={dependencyOptions}
             onSubmit={handleSubmit}
             priorityDropdownId="edit-priority"
             sprintDropdownId="edit-sprint"
             assigneeDropdownId="edit-assignee"
+            dependencyDropdownId="edit-dependency"
           />
         </div>
         <div className="flex shrink-0 justify-end border-t border-[#2A1814]/[0.08] px-8 py-6">

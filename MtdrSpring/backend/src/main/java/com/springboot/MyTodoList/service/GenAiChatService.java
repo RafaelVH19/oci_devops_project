@@ -3,6 +3,7 @@ package com.springboot.MyTodoList.service;
 import com.springboot.MyTodoList.agent.AgentOrchestrator;
 import com.springboot.MyTodoList.controller.dto.GenAiChatMessage;
 import com.springboot.MyTodoList.controller.dto.GenAiChatRequest;
+import com.springboot.MyTodoList.controller.dto.GenAiChatResponse;
 import com.springboot.MyTodoList.service.LumiActionPlan.Action;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,18 +59,15 @@ public class GenAiChatService {
         this.chatModel = chatModel;
     }
 
-    public String reply(GenAiChatRequest request) {
+    public GenAiChatResponse reply(GenAiChatRequest request) {
         String message = request.getMessage() == null ? "" : request.getMessage().trim();
-        // #region agent log
-        try { java.nio.file.Files.writeString(java.nio.file.Path.of("c:\\dev\\escuela\\6to sem\\bloque\\reto\\oci_devops_project\\debug-1e70f3.log"), "{\"sessionId\":\"1e70f3\",\"hypothesisId\":\"A\",\"location\":\"GenAiChatService.reply\",\"message\":\"incoming lumi request identity\",\"data\":{\"userRole\":\"" + request.getUserRole() + "\",\"userName\":\"" + request.getUserName() + "\"},\"timestamp\":" + System.currentTimeMillis() + "}\n", java.nio.charset.StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND); } catch (Exception ignore) { }
-        // #endregion
         if (message.isBlank()) {
-            return "Send a message to start chatting with Lumi.";
+            return new GenAiChatResponse("Send a message to start chatting with Lumi.");
         }
 
         Optional<String> ruleReply = lumiActionService.tryHandle(message);
         if (ruleReply.isPresent()) {
-            return ruleReply.get();
+            return new GenAiChatResponse(ruleReply.get(), isWorkspaceSuccess(ruleReply.get()));
         }
 
         if (lumiIntentService.isAvailable()) {
@@ -80,16 +78,16 @@ public class GenAiChatService {
                 if (resolved.isNeedsClarification()
                     && resolved.getClarificationQuestion() != null
                     && !resolved.getClarificationQuestion().isBlank()) {
-                    return resolved.getClarificationQuestion().trim();
+                    return new GenAiChatResponse(resolved.getClarificationQuestion().trim());
                 }
                 Optional<String> executed = lumiActionService.executePlan(resolved, request.getUserName());
                 if (executed.isPresent()) {
-                    return executed.get();
+                    return new GenAiChatResponse(executed.get(), isMutationAction(resolved.getAction()));
                 }
                 if (resolved.getAction() == Action.TASK_QUERY) {
                     String agentReply = agentOrchestrator.handleMessage(message, request.getUserRole(), request.getUserName());
                     if (isUsefulAgentReply(agentReply)) {
-                        return agentReply;
+                        return new GenAiChatResponse(agentReply, indicatesWorkspaceMutation(agentReply));
                     }
                 }
             }
@@ -98,7 +96,7 @@ public class GenAiChatService {
         if (looksLikeTaskQuery(message)) {
             String agentReply = agentOrchestrator.handleMessage(message, request.getUserRole(), request.getUserName());
             if (isUsefulAgentReply(agentReply)) {
-                return agentReply;
+                return new GenAiChatResponse(agentReply, indicatesWorkspaceMutation(agentReply));
             }
         }
 
@@ -120,13 +118,46 @@ public class GenAiChatService {
             String geminiReply = chatModel.call(new Prompt(msgs))
                 .getResult().getOutput().getText();
             if (geminiReply != null && !geminiReply.isBlank()) {
-                return geminiReply.trim();
+                return new GenAiChatResponse(geminiReply.trim());
             }
         } catch (Exception ex) {
             logger.warn("Gemini chat request failed", ex);
         }
 
-        return "Tell me what you'd like — create a team, project, or sprint, or ask about workload. I'll do it in the workspace.";
+        return new GenAiChatResponse(
+            "Tell me what you'd like — create a team, project, or sprint, or ask about workload. I'll do it in the workspace.");
+    }
+
+    private boolean isMutationAction(Action action) {
+        return action == Action.CREATE_TEAM
+            || action == Action.CREATE_PROJECT
+            || action == Action.CREATE_SPRINT
+            || action == Action.CREATE_TASK
+            || action == Action.COMPLETE_TASK;
+    }
+
+    private boolean isWorkspaceSuccess(String reply) {
+        if (reply == null) {
+            return false;
+        }
+        String trimmed = reply.trim();
+        return trimmed.startsWith("Done —") || trimmed.startsWith("Done -");
+    }
+
+    private boolean indicatesWorkspaceMutation(String reply) {
+        if (reply == null || reply.isBlank()) {
+            return false;
+        }
+        String lower = reply.toLowerCase(Locale.ROOT);
+        return lower.contains("tarea creada")
+            || lower.contains("created the task")
+            || lower.contains("i created the task")
+            || lower.contains("marked as completed")
+            || lower.contains("marked as done")
+            || lower.contains("eliminad")
+            || lower.contains("deleted")
+            || lower.contains("updated")
+            || lower.contains("actualiz");
     }
 
     private String buildSystemPrompt(GenAiChatRequest request) {

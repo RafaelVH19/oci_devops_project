@@ -32,6 +32,7 @@ public class LumiActionPlan {
     private Integer expectedHours;
     private String taskPriority;
     private String taskDueDate;
+    private String dependsOnTaskTitle;
     private Integer hoursDone;
     private boolean needsClarification;
     private String clarificationQuestion;
@@ -154,6 +155,14 @@ public class LumiActionPlan {
 
     public void setTaskDueDate(String taskDueDate) {
         this.taskDueDate = taskDueDate;
+    }
+
+    public String getDependsOnTaskTitle() {
+        return dependsOnTaskTitle;
+    }
+
+    public void setDependsOnTaskTitle(String dependsOnTaskTitle) {
+        this.dependsOnTaskTitle = dependsOnTaskTitle;
     }
 
     public Integer getHoursDone() {

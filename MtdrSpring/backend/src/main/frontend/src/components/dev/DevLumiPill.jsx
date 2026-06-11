@@ -24,12 +24,17 @@ async function askLumi(message, history, identity) {
       if (!response.ok) continue;
       const data = await response.json();
       const text = data.reply || data.message || data.output || data.text || data.response;
-      if (typeof text === 'string' && text.trim()) return text.trim();
+      if (typeof text === 'string' && text.trim()) {
+        return { text: text.trim(), workspaceChanged: data.workspaceChanged === true };
+      }
     } catch {
       // try next endpoint
     }
   }
-  return 'I could not reach Lumi right now. Please try again in a moment.';
+  return {
+    text: 'I could not reach Lumi right now. Please try again in a moment.',
+    workspaceChanged: false,
+  };
 }
 
 /**
@@ -38,7 +43,7 @@ async function askLumi(message, history, identity) {
  * Hover: expands into a composer. Sending shows a "thinking" shimmer,
  * then the pill extends upward with the conversation. Click outside collapses it.
  */
-export default function DevLumiPill() {
+export default function DevLumiPill({ onWorkspaceChanged }) {
   const { displayName, role } = useOracleUser();
   const rootRef = useRef(null);
   const inputRef = useRef(null);
@@ -99,11 +104,16 @@ export default function DevLumiPill() {
     setLoading(true);
 
     try {
-      const reply = await askLumi(text, nextMessages, { role, userName: displayName });
+      const { text: reply, workspaceChanged } = await askLumi(text, nextMessages, {
+        role,
+        userName: displayName,
+      });
       setMessages((prev) => [...prev, { id: uid(), role: 'assistant', content: reply }]);
       setPanelOpen(true);
-      // Lumi may have created/updated tasks or sprints — let open views refresh.
-      window.dispatchEvent(new CustomEvent('lumen:workspace-changed'));
+      if (workspaceChanged) {
+        onWorkspaceChanged?.();
+        window.dispatchEvent(new CustomEvent('lumen:workspace-changed'));
+      }
     } finally {
       setLoading(false);
       inputRef.current?.focus();

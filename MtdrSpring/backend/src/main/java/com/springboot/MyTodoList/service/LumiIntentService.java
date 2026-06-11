@@ -47,6 +47,7 @@ public class LumiIntentService {
           "expectedHours": 0,
           "taskPriority": "LOW|MEDIUM|HIGH",
           "taskDueDate": "YYYY-MM-DD",
+          "dependsOnTaskTitle": "",
           "hoursDone": 0,
           "needsClarification": false,
           "clarificationQuestion": ""
@@ -62,6 +63,11 @@ public class LumiIntentService {
           using the sprint dates from the workspace context):
           due within 2 days -> HIGH, within 7 days -> MEDIUM, later -> LOW. No date at all -> MEDIUM.
         - taskDueDate: set it if the user mentions a deadline; otherwise leave it empty.
+        - Task dependencies: if the user says the new task goes AFTER another task, depends on it,
+          is blocked by it, or can only start once another task is finished
+          ("X va después de Y", "X depende de Y", "do X once Y is done", "X after Y"),
+          set dependsOnTaskTitle to that other task's title — match it against the open tasks
+          in the workspace context. Leave it empty when no dependency is mentioned.
         - Use COMPLETE_TASK when the user says they finished, completed, or closed a task
           ("complete the task X", "I finished X", "terminé X", "mark X as done").
           Set taskTitle to the task they mean — match it against the open tasks in the workspace context.
@@ -200,6 +206,7 @@ public class LumiIntentService {
         }
         plan.setTaskPriority(textOrNull(node, "taskPriority"));
         plan.setTaskDueDate(textOrNull(node, "taskDueDate"));
+        plan.setDependsOnTaskTitle(textOrNull(node, "dependsOnTaskTitle"));
         JsonNode doneHours = node.path("hoursDone");
         if (doneHours.isNumber() && doneHours.asInt() > 0) {
             plan.setHoursDone(doneHours.asInt());
@@ -258,7 +265,12 @@ public class LumiIntentService {
                 .filter(u -> u.getId() != null)
                 .collect(Collectors.toMap(User::getId, u -> u.getName() != null ? u.getName() : "user " + u.getId(),
                     (a, b) -> a));
-            List<com.springboot.MyTodoList.model.Task> openTasks = taskService.findAll().stream()
+            List<com.springboot.MyTodoList.model.Task> allTasks = taskService.findAll();
+            Map<Long, String> taskTitlesById = allTasks.stream()
+                .filter(t -> t.getId() != null && t.getTitle() != null)
+                .collect(Collectors.toMap(com.springboot.MyTodoList.model.Task::getId,
+                    com.springboot.MyTodoList.model.Task::getTitle, (a, b) -> a));
+            List<com.springboot.MyTodoList.model.Task> openTasks = allTasks.stream()
                 .filter(t -> t.getStatus() == null
                     || !"DONE".equalsIgnoreCase(t.getStatus().name()))
                 .limit(20)
@@ -269,6 +281,9 @@ public class LumiIntentService {
                     .map(t -> "- " + t.getTitle()
                         + (t.getAssignedTo() != null && namesById.containsKey(t.getAssignedTo())
                             ? " [assigned to " + namesById.get(t.getAssignedTo()) + "]"
+                            : "")
+                        + (t.getDependsOnId() != null && taskTitlesById.containsKey(t.getDependsOnId())
+                            ? " [depends on \"" + taskTitlesById.get(t.getDependsOnId()) + "\"]"
                             : ""))
                     .collect(Collectors.joining("\n"));
         } catch (Exception ex) {
