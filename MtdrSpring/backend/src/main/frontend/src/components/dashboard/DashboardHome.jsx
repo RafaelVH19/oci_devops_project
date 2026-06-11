@@ -20,10 +20,10 @@ import {
   memberBarChartOptions,
 } from './dashboardCharts';
 import { fetchJsonSafe } from './dashboardApi';
-import { MOCK_TASKS } from './dashboardMocks';
 import ActivityListRow from './ActivityListRow';
 import DashboardSection from './DashboardSection';
 import { DashboardHomeSkeleton } from './DashboardSkeletons';
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -36,40 +36,93 @@ ChartJS.register(
   Filler
 );
 
-const burndownLabels = ['20/04/26', '22/04/26', '24/04/26', '26/04/26', '28/04/26', '30/04/26'];
-const burndownActual = [40, 32, 24, 16, 8, 0];
-const burndownIdeal = [40, 32, 24, 16, 8, 0];
+const SPRINT_SP = 192;
 
-function ChartEmpty({ message }) {
-  return (
-    <div className="flex h-full min-h-[8rem] items-center justify-center px-4 text-center text-sm text-[#6B6560]">
-      {message}
-    </div>
-  );
+function fmtDay(date) {
+  return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function buildMemberPoints(tasks, users) {
+function findCurrentSprint(sprints) {
+  if (!sprints.length) return null;
+  const now = new Date();
+  const active = sprints.find(
+    (s) => s.startDate && s.endDate && new Date(s.startDate) <= now && new Date(s.endDate) >= now
+  );
+  if (active) return active;
+  return sprints.reduce((latest, s) => {
+    if (!latest) return s;
+    return new Date(s.startDate || 0) > new Date(latest.startDate || 0) ? s : latest;
+  }, null);
+}
+
+function buildBurndown(tasks, sprint, sprintTaskIdSet) {
+  if (!sprint?.startDate || !sprint?.endDate || !sprintTaskIdSet) return null;
+
+  const sprintTasks = tasks.filter((t) => sprintTaskIdSet.has(t.id));
+
+  const startDay = new Date(sprint.startDate);
+  startDay.setHours(0, 0, 0, 0);
+  const endDay = new Date(sprint.endDate);
+  endDay.setHours(0, 0, 0, 0);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const days = [];
+  const cursor = new Date(startDay);
+  while (cursor <= endDay) {
+    days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  if (days.length === 0) return null;
+
+  const totalDays = Math.max(days.length - 1, 1);
+  const labels = days.map(fmtDay);
+  const ideal = days.map((_, i) => Math.round(SPRINT_SP * (1 - i / totalDays)));
+
+  let remaining = SPRINT_SP;
+  const actual = days.map((day) => {
+    if (day > todayStart) return null;
+    const dayEnd = new Date(day);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const burned = sprintTasks
+      .filter((t) => {
+        if (t.status !== 'DONE') return false;
+        const dateStr = t.completedDate || t.updatedAt;
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return d >= day && d <= dayEnd;
+      })
+      .reduce((sum, t) => sum + (t.expectedHours || 0), 0);
+
+    remaining -= burned;
+    return remaining;
+  });
+
+  return { labels, actual, ideal };
+}
+
+function buildMemberChart(tasks, users, sprintTaskIdSet) {
   const usersMap = {};
   users.forEach((u) => {
     usersMap[u.id] = u.name || u.username || `User ${u.id}`;
   });
 
+  const scoped = sprintTaskIdSet ? tasks.filter((t) => sprintTaskIdSet.has(t.id)) : tasks;
+
   const totals = {};
-  tasks
+  scoped
     .filter((t) => t.status === 'DONE')
     .forEach((t) => {
       const name = usersMap[t.assignedTo] || 'Unassigned';
       const first = name.split(' ')[0];
-      totals[first] = (totals[first] || 0) + (t.storyPoints || t.hoursDone || 1);
+      totals[first] = (totals[first] || 0) + (t.expectedHours || 1);
     });
 
   const entries = Object.entries(totals);
-  if (entries.length === 0) {
-    return { labels: [], data: [] };
-  }
-
+  if (entries.length === 0) return { labels: [], data: [] };
   return {
-    labels: entries.map(([name]) => name),
+    labels: entries.map(([n]) => n),
     data: entries.map(([, pts]) => pts),
   };
 }
@@ -86,9 +139,7 @@ function buildActivity(tasks, users) {
     )
     .slice(0, 6);
 
-  if (sorted.length === 0) {
-    return [];
-  }
+  if (sorted.length === 0) return [];
 
   return sorted.map((t, i) => {
     const actorId = t.assignedTo ?? t.createdBy;
@@ -106,34 +157,37 @@ function buildActivity(tasks, users) {
   });
 }
 
-function resolveTasksForHome(tasksResult) {
-  if (tasksResult.ok && Array.isArray(tasksResult.data)) {
-    return tasksResult.data;
-  }
-  if (!tasksResult.ok) {
-    return MOCK_TASKS;
-  }
-  return [];
+function ChartEmpty({ message }) {
+  return (
+    <div className="flex h-full min-h-[8rem] items-center justify-center px-4 text-center text-sm text-[#6B6560]">
+      {message}
+    </div>
+  );
 }
 
 function DashboardHome() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
-  const [tasksFromApi, setTasksFromApi] = useState(false);
+  const [sprints, setSprints] = useState([]);
+  const [sprintLinks, setSprintLinks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [tasksResult, usersResult] = await Promise.all([
+      const [tasksResult, usersResult, sprintsResult, sprintLinksResult] = await Promise.all([
         fetchJsonSafe('/tasks'),
         fetchJsonSafe('/api/users'),
+        fetchJsonSafe('/sprints'),
+        fetchJsonSafe('/sprint-tasks'),
       ]);
-
       if (!cancelled) {
-        setTasks(resolveTasksForHome(tasksResult));
-        setTasksFromApi(tasksResult.ok && (tasksResult.data?.length ?? 0) > 0);
+        setTasks(tasksResult.ok && Array.isArray(tasksResult.data) ? tasksResult.data : []);
         setUsers(usersResult.ok && Array.isArray(usersResult.data) ? usersResult.data : []);
+        setSprints(sprintsResult.ok && Array.isArray(sprintsResult.data) ? sprintsResult.data : []);
+        setSprintLinks(
+          sprintLinksResult.ok && Array.isArray(sprintLinksResult.data) ? sprintLinksResult.data : []
+        );
         setLoading(false);
       }
     })();
@@ -142,31 +196,36 @@ function DashboardHome() {
     };
   }, []);
 
-  const memberChart = useMemo(() => buildMemberPoints(tasks, users), [tasks, users]);
+  const currentSprint = useMemo(() => findCurrentSprint(sprints), [sprints]);
+
+  const sprintTaskIdSet = useMemo(() => {
+    if (!currentSprint) return null;
+    return new Set(
+      sprintLinks
+        .filter((st) => !st.removedAt && st.sprintId === currentSprint.id)
+        .map((st) => st.taskId)
+    );
+  }, [sprintLinks, currentSprint]);
+
+  const burndown = useMemo(
+    () => buildBurndown(tasks, currentSprint, sprintTaskIdSet),
+    [tasks, currentSprint, sprintTaskIdSet]
+  );
+
+  const memberChart = useMemo(
+    () => buildMemberChart(tasks, users, sprintTaskIdSet),
+    [tasks, users, sprintTaskIdSet]
+  );
+
   const activityItems = useMemo(() => buildActivity(tasks, users), [tasks, users]);
 
   const burndownData = useMemo(() => {
-    if (tasksFromApi && tasks.length > 0) {
-      const total = tasks.length;
-      const done = tasks.filter((t) => t.status === 'DONE').length;
-      const remaining = Math.max(total - done, 0);
-      const steps = 6;
-      const actual = Array.from({ length: steps }, (_, i) =>
-        Math.round(remaining + ((done * (steps - 1 - i)) / (steps - 1 || 1)))
-      );
-      const ideal = Array.from({ length: steps }, (_, i) =>
-        Math.round((remaining * (steps - 1 - i)) / (steps - 1 || 1))
-      );
-      return {
-        labels: burndownLabels,
-        datasets: buildBurndownDatasets(actual, ideal),
-      };
-    }
+    if (!burndown) return null;
     return {
-      labels: burndownLabels,
-      datasets: buildBurndownDatasets(burndownActual, burndownIdeal),
+      labels: burndown.labels,
+      datasets: buildBurndownDatasets(burndown.actual, burndown.ideal),
     };
-  }, [tasks, tasksFromApi]);
+  }, [burndown]);
 
   const memberBarData = useMemo(
     () => buildMemberBarDataset(memberChart.labels, memberChart.data),
@@ -177,22 +236,34 @@ function DashboardHome() {
     return <DashboardHomeSkeleton />;
   }
 
+  const sprintSubtitle = currentSprint
+    ? `${currentSprint.name ?? 'Current sprint'} · ${SPRINT_SP} SP standard`
+    : 'No active sprint found';
+
   return (
     <div className="dashboard-page-enter flex h-full min-h-0 w-full flex-col">
       <div className="grid min-h-0 flex-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] lg:gap-12">
         <div className="flex min-h-0 flex-col gap-10">
           <DashboardSection
             title="Story Points this Sprint"
-            subtitle="Burndown chart progression"
+            subtitle={sprintSubtitle}
           >
             <div className="h-52 sm:h-60 [&_canvas]:bg-transparent">
-              <Line data={burndownData} options={burndownChartOptions} />
+              {burndownData ? (
+                <Line data={burndownData} options={burndownChartOptions} />
+              ) : (
+                <ChartEmpty message="No active sprint data available." />
+              )}
             </div>
           </DashboardSection>
 
           <DashboardSection
             title="Story Points Completed per Member"
-            subtitle="Individual performance tracking"
+            subtitle={
+              currentSprint
+                ? `Completed work in ${currentSprint.name ?? 'current sprint'}`
+                : 'Individual performance tracking'
+            }
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-[10rem] flex-1 [&_canvas]:bg-transparent">

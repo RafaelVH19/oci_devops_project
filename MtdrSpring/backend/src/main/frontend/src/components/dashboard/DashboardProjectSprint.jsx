@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import moment from 'moment';
 import {
@@ -166,10 +166,58 @@ function buildVelocityData(rows, sprint) {
   };
 }
 
+function memberInitial(name) {
+  return (name || '?')[0].toUpperCase();
+}
+
+function MemberFilterBar({ members, selectedId, onSelect }) {
+  if (members.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onSelect(null)}
+        className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+          selectedId == null
+            ? 'bg-[#2A1814] text-white'
+            : 'bg-[#f5f2ec] text-[#6B6560] hover:text-[#2A1814]'
+        }`}
+      >
+        All members
+      </button>
+      {members.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          onClick={() => onSelect(m.id)}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+            selectedId === m.id
+              ? 'bg-[#2A1814] text-white'
+              : 'bg-[#f5f2ec] text-[#6B6560] hover:text-[#2A1814]'
+          }`}
+        >
+          <span
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+              selectedId === m.id
+                ? 'bg-white/20 text-white'
+                : 'bg-[#c74634]/15 text-[#c74634]'
+            }`}
+          >
+            {memberInitial(m.name)}
+          </span>
+          {m.name.split(' ')[0]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DashboardProjectSprint() {
   const { sprintId } = useParams();
   const sid = Number(sprintId);
-  const { project, teamTasks, orderedSprints } = useOutletContext();
+  const { project, teamTasks, orderedSprints, users } = useOutletContext();
+
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
 
   const sprint = useMemo(
     () => orderedSprints.find((s) => s.id === sid) || null,
@@ -181,9 +229,36 @@ function DashboardProjectSprint() {
     [teamTasks, sid]
   );
 
-  const priorityData = useMemo(() => buildPriorityData(rows), [rows]);
-  const statusData = useMemo(() => buildStatusData(rows), [rows]);
-  const velocityData = useMemo(() => buildVelocityData(rows, sprint), [rows, sprint]);
+  // Build the member list from whoever actually has tasks in this sprint
+  const sprintMembers = useMemo(() => {
+    const usersById = new Map(users.map((u) => [u.id, u.name || u.email || `User ${u.id}`]));
+    const seen = new Map();
+    rows.forEach((t) => {
+      if (t.assignedTo != null && !seen.has(t.assignedTo)) {
+        seen.set(t.assignedTo, usersById.get(t.assignedTo) || `User ${t.assignedTo}`);
+      }
+    });
+    return [...seen.entries()].map(([id, name]) => ({ id, name }));
+  }, [rows, users]);
+
+  // Reset selection when sprint changes
+  useEffect(() => {
+    setSelectedMemberId(null);
+  }, [sid]);
+
+  const filteredRows = useMemo(() => {
+    if (selectedMemberId == null) return rows;
+    return rows.filter((t) => t.assignedTo === selectedMemberId);
+  }, [rows, selectedMemberId]);
+
+  const priorityData = useMemo(() => buildPriorityData(filteredRows), [filteredRows]);
+  const statusData = useMemo(() => buildStatusData(filteredRows), [filteredRows]);
+  const velocityData = useMemo(() => buildVelocityData(filteredRows, sprint), [filteredRows, sprint]);
+
+  const selectedMemberName = useMemo(() => {
+    if (selectedMemberId == null) return null;
+    return sprintMembers.find((m) => m.id === selectedMemberId)?.name ?? null;
+  }, [selectedMemberId, sprintMembers]);
 
   if (!sprint) {
     return (
@@ -201,6 +276,7 @@ function DashboardProjectSprint() {
 
   return (
     <div className="space-y-6">
+      {/* Sprint header */}
       <div className="rounded-2xl border border-[#2A1814]/[0.06] bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -214,7 +290,37 @@ function DashboardProjectSprint() {
             {rows.length} tasks in sprint
           </span>
         </div>
+
+        {/* Member filter */}
+        {sprintMembers.length > 0 && (
+          <div className="mt-4 border-t border-[#2A1814]/[0.06] pt-4">
+            <p className="mb-2.5 text-xs font-medium uppercase tracking-wide text-[#6B6560]">
+              View by member
+            </p>
+            <MemberFilterBar
+              members={sprintMembers}
+              selectedId={selectedMemberId}
+              onSelect={setSelectedMemberId}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Scope label when a member is selected */}
+      {selectedMemberName && (
+        <p className="text-sm text-[#6B6560]">
+          Showing data for{' '}
+          <span className="font-medium text-[#2A1814]">{selectedMemberName}</span>
+          {' '}·{' '}
+          <button
+            type="button"
+            onClick={() => setSelectedMemberId(null)}
+            className="text-[#c74634] hover:underline"
+          >
+            Clear filter
+          </button>
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-[#2A1814]/[0.06] bg-white p-5 shadow-sm sm:p-6">
@@ -239,9 +345,11 @@ function DashboardProjectSprint() {
         <div className="h-72 [&_canvas]:bg-transparent">
           <Bar data={velocityData} options={velocityOptions} />
         </div>
-        {rows.length === 0 && (
+        {filteredRows.length === 0 && (
           <p className="mt-3 text-center text-sm text-[#6B6560]">
-            No tasks assigned to this sprint yet.
+            {selectedMemberName
+              ? `No tasks for ${selectedMemberName} in this sprint.`
+              : 'No tasks assigned to this sprint yet.'}
           </p>
         )}
       </div>

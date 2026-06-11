@@ -87,10 +87,11 @@ function sortSprints(sprintList, currentSprint) {
 }
 
 function App() {
-  const { displayName: oracleDisplayName, oracleUser, oracleUserId, loading: oracleUserLoading } = useOracleUser();
+  const { displayName: oracleDisplayName, oracleUser, oracleUserId, role, loading: oracleUserLoading } = useOracleUser();
   const [isLoading, setLoading] = useState(true);
   const [isInserting, setInserting] = useState(false);
   const [items, setItems] = useState([]);
+  const [users, setUsers] = useState([]);
   const [sprints, setSprints] = useState([]);
   const { toast, showSuccess, showError, dismissToast } = useAppToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,10 +118,27 @@ function App() {
     setInitials(getInitials(userName));
   }, [oracleUser, oracleDisplayName]);
 
-  const myItems = useMemo(
-    () => (isDemoMode || !oracleUserId ? items : items.filter((item) => item.assignedTo === oracleUserId)),
-    [items, oracleUserId]
+  const isManager = !isDemoMode && String(role || '').toUpperCase() === 'MANAGER';
+
+  const usersById = useMemo(
+    () => new Map(users.map((u) => [u.id, u.name || u.email || `User ${u.id}`])),
+    [users]
   );
+
+  const assigneeOptions = useMemo(() => {
+    if (!isManager) return null;
+    const devUsers = users.filter((u) => String(u.role || '').toUpperCase() === 'DEVELOPER');
+    if (devUsers.length === 0) return null;
+    return [
+      { value: '', label: 'Unassigned' },
+      ...devUsers.map((u) => ({ value: String(u.id), label: u.name || u.email || `User ${u.id}` })),
+    ];
+  }, [isManager, users]);
+
+  const myItems = useMemo(() => {
+    if (isManager) return items;
+    return isDemoMode || !oracleUserId ? items : items.filter((item) => item.assignedTo === oracleUserId);
+  }, [items, oracleUserId, isManager]);
 
   const getSprintTasks = (sprintId) => myItems.filter((item) => item.sprint?.id === sprintId);
   const unassignedTasks = useMemo(() => myItems.filter((item) => !item.sprint?.id), [myItems]);
@@ -213,6 +231,7 @@ function App() {
                   onConfirmDelete={deleteItem}
                   onCancelDelete={() => setPendingDeleteId(null)}
                   animationDelay={Math.min(idx * 20, 180)}
+                  assigneeName={isManager ? usersById.get(item.assignedTo) : undefined}
                 />
               ))
             )}
@@ -243,6 +262,7 @@ function App() {
                   onConfirmDelete={deleteItem}
                   onCancelDelete={() => setPendingDeleteId(null)}
                   animationDelay={Math.min(idx * 20, 180)}
+                  assigneeName={isManager ? usersById.get(item.assignedTo) : undefined}
                 />
               ))
             )}
@@ -256,23 +276,24 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const [tasksResponse, sprintsResponse] = await Promise.all([
+        const [tasksResponse, sprintsResponse, usersResponse] = await Promise.all([
           fetch(API_LIST),
           fetch('/sprints'),
+          fetch('/api/users'),
         ]);
         if (!tasksResponse.ok) throw new Error('Could not load tasks');
 
         const tasks = await tasksResponse.json();
         const sprintResult = sprintsResponse.ok ? await sprintsResponse.json() : [];
+        const userResult = usersResponse.ok ? await usersResponse.json() : [];
 
         if (cancelled) return;
         setItems(tasks);
         setSprints(sprintResult);
+        setUsers(userResult);
 
         if (isDemoMode) {
-          const usersResponse = await fetch('/api/users');
-          const users = usersResponse.ok ? await usersResponse.json() : [];
-          const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
+          const userName = userResult?.[0]?.name || userResult?.[0]?.username || 'Alex';
           setDisplayName(userName);
           setFirstName(userName.split(/\s+/)[0] || 'Alex');
           setInitials(getInitials(userName));
@@ -323,7 +344,7 @@ function App() {
       expectedHours: taskData.expectedHours,
       hoursDone: 0,
       isBug: taskData.isBug,
-      assignedTo: oracleUserId || 1,
+      assignedTo: taskData.assignedTo || oracleUserId || 1,
       createdBy: oracleUserId || 1,
       vector: 'web',
     };
@@ -452,7 +473,7 @@ function App() {
           </header>
 
           <div className="dashboard-section-enter" style={{ animationDelay: '100ms' }}>
-            <NewItem addItem={addItem} isInserting={isInserting} sprints={sprints} />
+            <NewItem addItem={addItem} isInserting={isInserting} sprints={sprints} assigneeOptions={assigneeOptions} />
           </div>
 
           {isLoading || oracleUserLoading ? (
@@ -700,6 +721,7 @@ function App() {
         onClose={() => setEditingTask(null)}
         onSaved={(updated) => handleTaskSaved(updated, 'Task updated')}
         onError={showError}
+        assigneeOptions={assigneeOptions}
       />
       <DevLumiPromoToast />
       <AppToast toast={toast} onDismiss={dismissToast} />

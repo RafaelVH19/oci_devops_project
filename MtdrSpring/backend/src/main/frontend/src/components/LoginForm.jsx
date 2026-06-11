@@ -39,7 +39,7 @@ function LoginForm() {
       let target = redirectTo.startsWith('/') ? redirectTo : '/app';
       try {
         const profileRes = await fetch(
-          `/users/by-email?email=${encodeURIComponent(email.trim())}`
+          `/api/users/by-email?email=${encodeURIComponent(email.trim())}`
         );
         if (profileRes.ok) {
           const profile = await profileRes.json();
