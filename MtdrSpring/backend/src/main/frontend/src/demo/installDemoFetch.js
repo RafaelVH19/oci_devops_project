@@ -124,7 +124,7 @@ function handleDemoRequest(pathname, method, init) {
     return jsonResponse({ id: 99, name: 'Demo user' }, 201);
   }
 
-  if (pathname === '/invite-user' && method === 'POST') {
+  if (pathname === '/api/users/invite' && method === 'POST') {
     return jsonResponse(
       {
         user: { id: 99, name: 'Demo user', email: 'demo@lumen.dev', role: 'DEVELOPER' },
