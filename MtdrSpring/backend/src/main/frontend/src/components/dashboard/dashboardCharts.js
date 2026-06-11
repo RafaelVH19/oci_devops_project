@@ -104,8 +104,7 @@ export const burndownChartOptions = {
       },
       ticks: {
         ...sharedTicks,
-        stepSize: 10,
-        callback: (value) => value,
+        stepSize: 24,
       },
       border: { display: false },
     },

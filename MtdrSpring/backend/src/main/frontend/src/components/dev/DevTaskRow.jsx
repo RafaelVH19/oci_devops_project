@@ -15,6 +15,7 @@ export default function DevTaskRow({
   onConfirmDelete,
   onCancelDelete,
   animationDelay = 0,
+  assigneeName,
 }) {
   const isConfirming = pendingDeleteId === item.id;
   const status = String(item.status || '').toUpperCase();
@@ -36,6 +37,11 @@ export default function DevTaskRow({
           <p className="truncate text-sm text-[#6B6560] line-through">{item.title}</p>
           <p className="mt-1 text-xs text-[#6B6560]">
             Completed {item.updatedAt ? moment(item.updatedAt).fromNow() : 'recently'}
+            {assigneeName && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#2A1814]/[0.06] px-2 py-0.5 font-medium text-[#2A1814]">
+                {assigneeName}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -83,6 +89,11 @@ export default function DevTaskRow({
             {item.priority || 'N/A'}
           </span>
           <span className="text-[#6B6560]">Estimate: {item.expectedHours || 0}h</span>
+          {assigneeName && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#2A1814]/[0.06] px-2 py-0.5 font-medium text-[#2A1814]">
+              {assigneeName}
+            </span>
+          )}
         </div>
       </div>
 
