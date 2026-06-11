@@ -127,7 +127,7 @@ function DashboardHome() {
     (async () => {
       const [tasksResult, usersResult] = await Promise.all([
         fetchJsonSafe('/tasks'),
-        fetchJsonSafe('/users'),
+        fetchJsonSafe('/api/users'),
       ]);
 
       if (!cancelled) {

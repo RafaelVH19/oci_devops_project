@@ -118,7 +118,7 @@ function DashboardTeam() {
     }
     const invited = await response.json();
     const created = invited.user;
-    const usersRes = await fetch('/users');
+    const usersRes = await fetch('/api/users');
     if (usersRes.ok) {
       setUsers(await usersRes.json());
     }

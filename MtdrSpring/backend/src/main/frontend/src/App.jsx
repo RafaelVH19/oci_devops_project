@@ -87,7 +87,7 @@ function sortSprints(sprintList, currentSprint) {
 }
 
 function App() {
-  const { displayName: oracleDisplayName, oracleUser } = useOracleUser();
+  const { displayName: oracleDisplayName, oracleUser, oracleUserId, loading: oracleUserLoading } = useOracleUser();
   const [isLoading, setLoading] = useState(true);
   const [isInserting, setInserting] = useState(false);
   const [items, setItems] = useState([]);
@@ -117,8 +117,13 @@ function App() {
     setInitials(getInitials(userName));
   }, [oracleUser, oracleDisplayName]);
 
-  const getSprintTasks = (sprintId) => items.filter((item) => item.sprint?.id === sprintId);
-  const unassignedTasks = useMemo(() => items.filter((item) => !item.sprint?.id), [items]);
+  const myItems = useMemo(
+    () => (isDemoMode || !oracleUserId ? items : items.filter((item) => item.assignedTo === oracleUserId)),
+    [items, oracleUserId]
+  );
+
+  const getSprintTasks = (sprintId) => myItems.filter((item) => item.sprint?.id === sprintId);
+  const unassignedTasks = useMemo(() => myItems.filter((item) => !item.sprint?.id), [myItems]);
 
   const applyTaskFilters = (tasks) => {
     const token = searchTerm.trim().toLowerCase();
@@ -265,7 +270,7 @@ function App() {
         setSprints(sprintResult);
 
         if (isDemoMode) {
-          const usersResponse = await fetch('/users');
+          const usersResponse = await fetch('/api/users');
           const users = usersResponse.ok ? await usersResponse.json() : [];
           const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
           setDisplayName(userName);
@@ -318,8 +323,8 @@ function App() {
       expectedHours: taskData.expectedHours,
       hoursDone: 0,
       isBug: taskData.isBug,
-      assignedTo: 1,
-      createdBy: 1,
+      assignedTo: oracleUserId || 1,
+      createdBy: oracleUserId || 1,
       vector: 'web',
     };
 
@@ -391,8 +396,8 @@ function App() {
 
   const visibleCountText = `${visibleSprints.length} of ${sprints.length} sprints visible`;
   const totalPendingTasks = useMemo(
-    () => items.filter((task) => String(task.status || '').toUpperCase() !== 'DONE').length,
-    [items]
+    () => myItems.filter((task) => String(task.status || '').toUpperCase() !== 'DONE').length,
+    [myItems]
   );
   const isEmptyState = !isLoading && totalPendingTasks === 0;
   const today = formatToday();
@@ -450,7 +455,7 @@ function App() {
             <NewItem addItem={addItem} isInserting={isInserting} sprints={sprints} />
           </div>
 
-          {isLoading ? (
+          {isLoading || oracleUserLoading ? (
             <DevAppSkeleton />
           ) : (
             <div className="dashboard-section-enter space-y-8" style={{ animationDelay: '140ms' }}>
@@ -677,7 +682,7 @@ function App() {
                 </main>
 
                 <DevTaskCalendar
-                  tasks={items}
+                  tasks={myItems}
                   sprints={sprints}
                   onTaskSelect={focusTaskFromCalendar}
                   formatStatusLabel={formatStatusLabel}

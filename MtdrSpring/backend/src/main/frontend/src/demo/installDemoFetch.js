@@ -84,7 +84,7 @@ function handleDemoRequest(pathname, method, init) {
     return jsonResponse({ id: 99, name: 'Demo sprint' }, 201);
   }
 
-  if (pathname === '/users' && method === 'GET') {
+  if (pathname === '/api/users' && method === 'GET') {
     return jsonResponse(getUsers());
   }
 
@@ -136,7 +136,7 @@ function handleDemoRequest(pathname, method, init) {
     );
   }
 
-  if (pathname === '/users/by-email' && method === 'GET') {
+  if (pathname === '/api/users/by-email' && method === 'GET') {
     return jsonResponse({
       id: 1,
       name: 'Alex Rivera',

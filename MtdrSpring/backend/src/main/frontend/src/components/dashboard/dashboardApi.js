@@ -34,7 +34,7 @@ export async function fetchDashboardBundle() {
     fetchJsonSafe('/teams'),
     fetchJsonSafe('/tasks'),
     fetchJsonSafe('/sprints'),
-    fetchJsonSafe('/users'),
+    fetchJsonSafe('/api/users'),
   ]);
 
   return {
