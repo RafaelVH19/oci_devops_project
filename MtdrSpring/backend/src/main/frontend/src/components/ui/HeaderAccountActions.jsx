@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Home, LayoutDashboard, ListTodo, LogOut } from 'lucide-react';
+import { Bell, Home, LogOut } from 'lucide-react';
 import { isDemoMode } from '../../config/demoMode';
 import { useOracleUser } from '../../hooks/useOracleUser';
 import { signOut } from '../../lib/auth-client';
@@ -150,27 +150,6 @@ export default function HeaderAccountActions({
               <p className="text-sm font-medium text-[#2A1814]">{displayName}</p>
               <p className="text-xs text-[#6B6560]">{roleLabel}</p>
             </div>
-            {variant === 'dev' ? (
-              <Link
-                to="/dashboard"
-                role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-[#2A1814] transition hover:bg-[#faf9f6]"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                <LayoutDashboard className="h-4 w-4 shrink-0 text-[#6B6560]" />
-                Manager dashboard
-              </Link>
-            ) : (
-              <Link
-                to="/app"
-                role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-[#2A1814] transition hover:bg-[#faf9f6]"
-                onClick={() => setProfileMenuOpen(false)}
-              >
-                <ListTodo className="h-4 w-4 shrink-0 text-[#6B6560]" />
-                Developer view
-              </Link>
-            )}
             <Link
               to="/"
               role="menuitem"

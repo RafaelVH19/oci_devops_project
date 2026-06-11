@@ -20,6 +20,7 @@ public class TaskWithSprintResponse {
     private Integer hoursDone;
     private Integer expectedHours;
     private Boolean isBug;
+    private Long dependsOnId;
     private SprintSummaryResponse sprint;
 
     public TaskWithSprintResponse() {
@@ -40,6 +41,7 @@ public class TaskWithSprintResponse {
         this.hoursDone = task.getHoursDone();
         this.expectedHours = task.getExpectedHours();
         this.isBug = task.getIsBug();
+        this.dependsOnId = task.getDependsOnId();
         this.sprint = sprint;
     }
 
@@ -154,6 +156,14 @@ public class TaskWithSprintResponse {
 
     public void setInsight(float[] insight) {
         this.insight = insight;
+    }
+
+    public Long getDependsOnId() {
+        return dependsOnId;
+    }
+
+    public void setDependsOnId(Long dependsOnId) {
+        this.dependsOnId = dependsOnId;
     }
 
     public SprintSummaryResponse getSprint() {

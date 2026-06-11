@@ -67,6 +67,10 @@ public class Task {
     @Column(name = "IS_BUG", nullable = false)
     private Boolean isBug = false;
 
+    /** Task that must be DONE before this one can start (null = no dependency). */
+    @Column(name = "DEPENDS_ON_ID")
+    private Long dependsOnId;
+
     public Task() {
     }
 
@@ -198,5 +202,13 @@ public class Task {
 
     public void setIsBug(Boolean isBug) {
         this.isBug = isBug;
+    }
+
+    public Long getDependsOnId() {
+        return dependsOnId;
+    }
+
+    public void setDependsOnId(Long dependsOnId) {
+        this.dependsOnId = dependsOnId;
     }
 }

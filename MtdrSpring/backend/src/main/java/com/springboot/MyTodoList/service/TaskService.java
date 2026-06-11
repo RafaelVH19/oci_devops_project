@@ -66,6 +66,7 @@ public class TaskService {
             current.setHoursDone(updated.getHoursDone());
             current.setExpectedHours(updated.getExpectedHours());
             current.setIsBug(updated.getIsBug());
+            current.setDependsOnId(updated.getDependsOnId());
             if (updated.getCreatedAt() != null) {
                 current.setCreatedAt(updated.getCreatedAt());
             }

@@ -19,6 +19,7 @@ export function buildTaskPutBody(task, patch = {}) {
     isBug: patch.isBug ?? task.isBug ?? false,
     assignedTo: patch.assignedTo != null ? Number(patch.assignedTo) : (task.assignedTo ?? 1),
     createdBy: task.createdBy ?? 1,
+    dependsOnId: 'dependsOnId' in patch ? patch.dependsOnId : (task.dependsOnId ?? null),
     vector: task.vector ?? 'web',
   };
 }
@@ -75,6 +76,7 @@ export async function saveTaskEdits(task, formData) {
     expectedHours: Number(formData.expectedHours),
     isBug: formData.isBug,
     assignedTo: formData.assignedTo ? Number(formData.assignedTo) : undefined,
+    dependsOnId: formData.dependsOnId ? Number(formData.dependsOnId) : null,
   });
   return updateTaskSprint(updated, formData.sprintId ? Number(formData.sprintId) : null);
 }

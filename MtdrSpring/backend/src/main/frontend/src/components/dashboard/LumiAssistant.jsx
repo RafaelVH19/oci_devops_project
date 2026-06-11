@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Markdown from 'react-markdown';
 import { useOracleUser } from '../../hooks/useOracleUser';
 import {
   ArrowLeft,
@@ -16,7 +17,13 @@ import {
   Trash2,
 } from 'lucide-react';
 
-const STORAGE_KEY = 'lumi-assistant-chats-v1';
+const STORAGE_KEY_PREFIX = 'lumi-assistant-chats-v1';
+const LEGACY_STORAGE_KEY = 'lumi-assistant-chats-v1';
+
+function storageKeyFor(email) {
+  const account = (email || '').trim().toLowerCase();
+  return account ? `${STORAGE_KEY_PREFIX}:${account}` : LEGACY_STORAGE_KEY;
+}
 const VIEW_NEW = 'new';
 const VIEW_CHAT = 'chat';
 const VIEW_SEARCH = 'search';
@@ -43,9 +50,9 @@ function buildAssistantMessage(content) {
   return { id: uid('msg'), role: 'assistant', content, createdAt: Date.now() };
 }
 
-function readChats() {
+function readChats(storageKey) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [buildNewChat()];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return [buildNewChat()];
@@ -58,8 +65,8 @@ function readChats() {
   }
 }
 
-function persistChats(chats) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+function persistChats(storageKey, chats) {
+  localStorage.setItem(storageKey, JSON.stringify(chats));
 }
 
 function firstWords(text, size = 28) {
@@ -77,6 +84,9 @@ async function fetchJson(url, options) {
 async function callAssistantApi(message, history, userContext) {
   const envUrl = import.meta.env.VITE_GENAI_API_URL;
   const endpoints = [envUrl, '/api/genai/chat'].filter(Boolean);
+  // #region agent log
+  fetch('http://127.0.0.1:7571/ingest/8e0bfefa-8d60-4ef8-8a5f-982f4459e523',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1e70f3'},body:JSON.stringify({sessionId:'1e70f3',hypothesisId:'B',location:'LumiAssistant.jsx:callAssistantApi',message:'client identity sent to lumi',data:{role:userContext?.role??null,userName:userContext?.userName??null,oracleUserId:userContext?.oracleUserId??null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint, {
@@ -85,6 +95,8 @@ async function callAssistantApi(message, history, userContext) {
         body: JSON.stringify({
           message,
           history: history.slice(-10).map((item) => ({ role: item.role, content: item.content })),
+          userRole: userContext?.role ?? null,
+          userName: userContext?.userName ?? null,
           userContext,
         }),
       });
@@ -127,7 +139,7 @@ async function runSmartAction(message, userContext) {
   const userId = userContext?.oracleUserId;
 
   if (lower.includes('create team') || lower.includes('crear team') || lower.includes('crear equipo')) {
-    const users = await fetchJson('/users');
+    const users = await fetchJson('/api/users');
     const teams = await fetchJson('/teams');
     const names = extractNames(message);
     const matched = findUsersByNames(users, names);
@@ -427,10 +439,11 @@ function LumiComposer({ draft, setDraft, loading, onSend }) {
 }
 
 function LumiAssistant() {
-  const { displayName, email: userEmail, oracleUserId, role } = useOracleUser();
+  const { displayName, email: userEmail, oracleUserId, role, loading: userLoading } = useOracleUser();
 
-  const [chats, setChats] = useState(readChats);
-  const [selectedChatId, setSelectedChatId] = useState(() => readChats()[0]?.id);
+  const storageKey = storageKeyFor(userEmail);
+  const [chats, setChats] = useState(() => readChats(storageKey));
+  const [selectedChatId, setSelectedChatId] = useState(() => readChats(storageKey)[0]?.id);
   const [activeView, setActiveView] = useState(VIEW_NEW);
   const [searchTerm, setSearchTerm] = useState('');
   const [draft, setDraft] = useState('');
@@ -439,10 +452,19 @@ function LumiAssistant() {
   const [chatMenuOpenId, setChatMenuOpenId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Reload the chat list when the signed-in account resolves/changes.
+  useEffect(() => {
+    if (userLoading) return;
+    const accountChats = readChats(storageKey);
+    setChats(accountChats);
+    setSelectedChatId(accountChats[0]?.id ?? null);
+    setActiveView(VIEW_NEW);
+  }, [storageKey, userLoading]);
+
   const profileName = displayName;
   const profileEmail = userEmail || '';
   const profileAvatar = '';
-  const userContext = { role, oracleUserId };
+  const userContext = { role, oracleUserId, userName: displayName };
 
   useEffect(() => {
     const faviconLink = document.getElementById('favicon');
@@ -492,7 +514,7 @@ function LumiAssistant() {
 
   const updateChats = (next) => {
     setChats(next);
-    persistChats(next);
+    persistChats(storageKey, next);
   };
 
   const createChat = () => {
@@ -862,10 +884,10 @@ function LumiAssistant() {
                           ) : (
                             <div
                               key={message.id}
-                              className="lumi-message-enter max-w-[72%] text-sm leading-relaxed text-[#2A1814]"
+                              className="lumi-message-enter lumi-markdown max-w-[72%] text-sm leading-relaxed text-[#2A1814]"
                               style={{ animationDelay: `${Math.min(index * 26, 220)}ms` }}
                             >
-                              {message.content}
+                              <Markdown>{message.content}</Markdown>
                             </div>
                           )
                         )}

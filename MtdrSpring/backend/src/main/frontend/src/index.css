@@ -775,6 +775,116 @@ html:has(.dev-app-page)::-webkit-scrollbar-thumb:active {
   animation: devToastEnter 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Floating Lumi pill (developer view) */
+.dev-lumi-pill {
+  height: 3rem;
+  cursor: pointer;
+  transition:
+    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms ease;
+  will-change: width;
+}
+
+.dev-lumi-pill--closed {
+  width: 5rem;
+  justify-content: center;
+}
+
+.dev-lumi-pill--open {
+  width: min(24rem, calc(100vw - 2rem));
+  cursor: default;
+}
+
+.dev-lumi-pill:hover {
+  box-shadow: 0 16px 44px -14px rgba(199, 70, 52, 0.45);
+}
+
+@keyframes devLumiPanelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dev-lumi-panel-enter {
+  transform-origin: bottom center;
+  animation: devLumiPanelEnter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Markdown rendering inside Lumi chats */
+.lumi-markdown > * + * {
+  margin-top: 0.5rem;
+}
+
+.lumi-markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lumi-markdown ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lumi-markdown strong {
+  font-weight: 600;
+  color: #2a1814;
+}
+
+.lumi-markdown h1,
+.lumi-markdown h2,
+.lumi-markdown h3 {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.lumi-markdown code {
+  border-radius: 0.375rem;
+  background: rgba(42, 24, 20, 0.06);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+}
+
+.lumi-markdown a {
+  color: #c74634;
+  text-decoration: underline;
+}
+
+@keyframes devLumiThinkingWave {
+  from {
+    background-position: 200% 50%;
+  }
+  to {
+    background-position: -200% 50%;
+  }
+}
+
+.dev-lumi-thinking-text {
+  background-image: linear-gradient(
+    90deg,
+    #c4beb8 0%,
+    #8a837d 25%,
+    #2a1814 50%,
+    #8a837d 75%,
+    #c4beb8 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: devLumiThinkingWave 1.5s linear infinite;
+}
+
 @keyframes appToastEnter {
   from {
     opacity: 0;

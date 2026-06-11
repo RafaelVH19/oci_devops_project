@@ -31,6 +31,7 @@ function DashboardTeam() {
   const [inviteForm, setInviteForm] = useState({
     name: '',
     email: '',
+    role: 'DEVELOPER',
   });
   const [memberToDelete, setMemberToDelete] = useState(null);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
@@ -100,7 +101,7 @@ function DashboardTeam() {
       body: JSON.stringify({
         name,
         email,
-        role: 'DEVELOPER',
+        role: inviteForm.role || 'DEVELOPER',
         workMode: 'REMOTE',
         invitedByName: inviterName || undefined,
         invitedByEmail: inviterEmail || undefined,
@@ -128,7 +129,7 @@ function DashboardTeam() {
         memberIds: [...new Set([...prev.memberIds.map(String), String(created.id)])],
       }));
     }
-    setInviteForm({ name: '', email: '' });
+    setInviteForm({ name: '', email: '', role: 'DEVELOPER' });
     const passwordHint = invited.temporaryPassword
       ? ` Temporary password: ${invited.temporaryPassword}`
       : '';
@@ -186,7 +187,7 @@ function DashboardTeam() {
       setShowModal(false);
       setIsManagerOpen(false);
       setTeamForm({ name: '', managerId: '', memberIds: [] });
-      setInviteForm({ name: '', email: '' });
+      setInviteForm({ name: '', email: '', role: 'DEVELOPER' });
       showSuccess(`Team “${name}” created.`);
     } catch (e) {
       showError(e.message || 'Failed to create team.');
@@ -433,7 +434,7 @@ function DashboardTeam() {
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-medium text-[#2A1814]">Invite new developer</p>
+                <p className="mb-2 text-sm font-medium text-[#2A1814]">Invite new member</p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-2 block text-sm text-[#2a1814]/60">Name</span>
@@ -455,6 +456,19 @@ function DashboardTeam() {
                         placeholder="Email"
                         className="w-full border-0 bg-transparent text-sm text-[#2a1814] placeholder:text-[#2a1814]/35 focus:outline-none focus:ring-0"
                       />
+                    </span>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-sm text-[#2a1814]/60">Role</span>
+                    <span className="flex items-center gap-2 border-0 border-b border-[#2a1814]/20 py-2.5 focus-within:border-[#2a1814]">
+                      <select
+                        value={inviteForm.role}
+                        onChange={(e) => setInviteForm((prev) => ({ ...prev, role: e.target.value }))}
+                        className="w-full border-0 bg-transparent text-sm text-[#2a1814] focus:outline-none focus:ring-0"
+                      >
+                        <option value="DEVELOPER">Developer</option>
+                        <option value="MANAGER">Manager</option>
+                      </select>
                     </span>
                   </label>
                 </div>

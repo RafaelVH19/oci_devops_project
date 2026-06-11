@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
 import {
@@ -12,7 +12,7 @@ import API_LIST from './API';
 import { DevAppSkeleton } from './components/dashboard/DashboardSkeletons';
 import DevTaskRow from './components/dev/DevTaskRow';
 import DevTaskCalendar from './components/dev/DevTaskCalendar';
-import DevLumiPromoToast from './components/dev/DevLumiPromoToast';
+import DevLumiPill from './components/dev/DevLumiPill';
 import AppToast from './components/ui/AppToast';
 import HeaderAccountActions from './components/ui/HeaderAccountActions';
 import EditTaskModal from './components/dev/EditTaskModal';
@@ -143,6 +143,19 @@ function App() {
   const getSprintTasks = (sprintId) => myItems.filter((item) => item.sprint?.id === sprintId);
   const unassignedTasks = useMemo(() => myItems.filter((item) => !item.sprint?.id), [myItems]);
 
+  const itemsById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+
+  // A task with a dependency stays blocked until that dependency is DONE.
+  function getDependency(task) {
+    if (task?.dependsOnId == null) return null;
+    const dependencyTask = itemsById.get(task.dependsOnId);
+    if (!dependencyTask) return null;
+    return {
+      task: dependencyTask,
+      done: String(dependencyTask.status || '').toUpperCase() === 'DONE',
+    };
+  }
+
   const applyTaskFilters = (tasks) => {
     const token = searchTerm.trim().toLowerCase();
     return tasks.filter((task) => {
@@ -175,6 +188,17 @@ function App() {
     updateTask(task, { status })
       .then((updated) => handleTaskSaved(updated, `Status updated to ${formatStatusLabel(status)}`))
       .catch((err) => showError(err));
+  }
+
+  function handleAdvance(task) {
+    const dependency = getDependency(task);
+    if (dependency && !dependency.done) {
+      showError(
+        new Error(`"${task.title}" is blocked by "${dependency.task.title}" — finish that task first.`)
+      );
+      return;
+    }
+    handleStatusChange(task, nextStatus(task.status));
   }
 
   function deleteItem(deleteId) {
@@ -224,7 +248,7 @@ function App() {
                   formatStatusLabel={formatStatusLabel}
                   priorityPillClass={priorityPillClass}
                   pendingDeleteId={pendingDeleteId}
-                  onAdvance={(t) => handleStatusChange(t, nextStatus(t.status))}
+                  onAdvance={handleAdvance}
                   onReopen={(t) => handleStatusChange(t, 'PENDING')}
                   onEdit={setEditingTask}
                   onDeleteRequest={setPendingDeleteId}
@@ -232,6 +256,7 @@ function App() {
                   onCancelDelete={() => setPendingDeleteId(null)}
                   animationDelay={Math.min(idx * 20, 180)}
                   assigneeName={isManager ? usersById.get(item.assignedTo) : undefined}
+                  dependency={getDependency(item)}
                 />
               ))
             )}
@@ -324,6 +349,32 @@ function App() {
     };
   }, []);
 
+  const refreshWorkspace = useCallback(async () => {
+    const cacheBust = Date.now();
+    try {
+      const [tasksResponse, sprintsResponse, usersResponse] = await Promise.all([
+        fetch(`${API_LIST}?_=${cacheBust}`, { cache: 'no-store' }),
+        fetch(`/sprints?_${cacheBust}`, { cache: 'no-store' }),
+        fetch(`/api/users?_${cacheBust}`, { cache: 'no-store' }),
+      ]);
+      if (tasksResponse.ok) setItems(await tasksResponse.json());
+      if (sprintsResponse.ok) {
+        const sprintResult = await sprintsResponse.json();
+        setSprints(sprintResult);
+        setCurrentSprint((prev) => prev ?? determineCurrentSprint(sprintResult));
+      }
+      if (usersResponse.ok) setUsers(await usersResponse.json());
+    } catch {
+      // keep current data if the refresh fails
+    }
+  }, []);
+
+  // Silent refresh when Lumi changes tasks/sprints in the workspace.
+  useEffect(() => {
+    window.addEventListener('lumen:workspace-changed', refreshWorkspace);
+    return () => window.removeEventListener('lumen:workspace-changed', refreshWorkspace);
+  }, [refreshWorkspace]);
+
   useEffect(() => {
     document.documentElement.classList.add('dev-app-active');
     return () => document.documentElement.classList.remove('dev-app-active');
@@ -346,6 +397,7 @@ function App() {
       isBug: taskData.isBug,
       assignedTo: taskData.assignedTo || oracleUserId || 1,
       createdBy: oracleUserId || 1,
+      dependsOnId: taskData.dependsOnId || null,
       vector: 'web',
     };
 
@@ -473,7 +525,13 @@ function App() {
           </header>
 
           <div className="dashboard-section-enter" style={{ animationDelay: '100ms' }}>
-            <NewItem addItem={addItem} isInserting={isInserting} sprints={sprints} assigneeOptions={assigneeOptions} />
+            <NewItem
+              addItem={addItem}
+              isInserting={isInserting}
+              sprints={sprints}
+              assigneeOptions={assigneeOptions}
+              tasks={items}
+            />
           </div>
 
           {isLoading || oracleUserLoading ? (
@@ -722,8 +780,9 @@ function App() {
         onSaved={(updated) => handleTaskSaved(updated, 'Task updated')}
         onError={showError}
         assigneeOptions={assigneeOptions}
+        tasks={items}
       />
-      <DevLumiPromoToast />
+      <DevLumiPill onWorkspaceChanged={refreshWorkspace} />
       <AppToast toast={toast} onDismiss={dismissToast} />
     </section>
   );

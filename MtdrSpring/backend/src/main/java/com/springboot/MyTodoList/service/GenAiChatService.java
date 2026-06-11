@@ -3,6 +3,7 @@ package com.springboot.MyTodoList.service;
 import com.springboot.MyTodoList.agent.AgentOrchestrator;
 import com.springboot.MyTodoList.controller.dto.GenAiChatMessage;
 import com.springboot.MyTodoList.controller.dto.GenAiChatRequest;
+import com.springboot.MyTodoList.controller.dto.GenAiChatResponse;
 import com.springboot.MyTodoList.service.LumiActionPlan.Action;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,14 +28,20 @@ public class GenAiChatService {
 
     private static final String LUMI_SYSTEM_PROMPT = """
         You are Lumi, a friendly project assistant in the Lumen app.
-        Reply in the same language the user uses (English or Spanish). Be warm and concise.
+        ALWAYS reply in English, even if the user writes in Spanish or another language. Be warm and concise.
+
+        Formatting:
+        - Use markdown in your replies.
+        - When an answer contains several items (tasks, steps, people, options), present them as a bullet list.
+        - Use **bold** for names of tasks, sprints, teams, and projects.
 
         Important:
         - Talk like a human colleague, not a command manual.
         - Never tell the user to type slash commands (/addtask, /register, etc.).
-        - If they want something created, ask naturally for missing details (names, dates, people).
+        - If details are missing for something they want created, ask for ALL missing details in ONE message
+          (as a short bullet list), never one question at a time.
         - Do not claim you already created teams, projects, or sprints unless the user message says it was done.
-        - The app does not require login; created items appear in Dashboard → Team / Projects.
+        - Created items appear in Dashboard → Team / Projects.
         """;
 
     private final LumiActionService lumiActionService;
@@ -52,50 +59,51 @@ public class GenAiChatService {
         this.chatModel = chatModel;
     }
 
-    public String reply(GenAiChatRequest request) {
+    public GenAiChatResponse reply(GenAiChatRequest request) {
         String message = request.getMessage() == null ? "" : request.getMessage().trim();
         if (message.isBlank()) {
-            return "Send a message to start chatting with Lumi.";
+            return new GenAiChatResponse("Send a message to start chatting with Lumi.");
         }
 
         Optional<String> ruleReply = lumiActionService.tryHandle(message);
         if (ruleReply.isPresent()) {
-            return ruleReply.get();
+            return new GenAiChatResponse(ruleReply.get(), isWorkspaceSuccess(ruleReply.get()));
         }
 
         if (lumiIntentService.isAvailable()) {
-            Optional<LumiActionPlan> plan = lumiIntentService.extractPlan(message, request.getHistory());
+            Optional<LumiActionPlan> plan = lumiIntentService.extractPlan(
+                message, request.getHistory(), request.getUserName(), request.getUserRole());
             if (plan.isPresent()) {
                 LumiActionPlan resolved = plan.get();
                 if (resolved.isNeedsClarification()
                     && resolved.getClarificationQuestion() != null
                     && !resolved.getClarificationQuestion().isBlank()) {
-                    return resolved.getClarificationQuestion().trim();
+                    return new GenAiChatResponse(resolved.getClarificationQuestion().trim());
                 }
-                Optional<String> executed = lumiActionService.executePlan(resolved);
+                Optional<String> executed = lumiActionService.executePlan(resolved, request.getUserName());
                 if (executed.isPresent()) {
-                    return executed.get();
+                    return new GenAiChatResponse(executed.get(), isMutationAction(resolved.getAction()));
                 }
                 if (resolved.getAction() == Action.TASK_QUERY) {
-                    String agentReply = agentOrchestrator.handleMessage(message, request.getUserRole());
+                    String agentReply = agentOrchestrator.handleMessage(message, request.getUserRole(), request.getUserName());
                     if (isUsefulAgentReply(agentReply)) {
-                        return agentReply;
+                        return new GenAiChatResponse(agentReply, indicatesWorkspaceMutation(agentReply));
                     }
                 }
             }
         }
 
         if (looksLikeTaskQuery(message)) {
-            String agentReply = agentOrchestrator.handleMessage(message, request.getUserRole());
+            String agentReply = agentOrchestrator.handleMessage(message, request.getUserRole(), request.getUserName());
             if (isUsefulAgentReply(agentReply)) {
-                return agentReply;
+                return new GenAiChatResponse(agentReply, indicatesWorkspaceMutation(agentReply));
             }
         }
 
         List<GenAiChatMessage> history = request.getHistory();
         try {
             List<Message> msgs = new ArrayList<>();
-            msgs.add(new SystemMessage(LUMI_SYSTEM_PROMPT));
+            msgs.add(new SystemMessage(buildSystemPrompt(request)));
             if (history != null) {
                 for (GenAiChatMessage item : history) {
                     if (item == null || item.getContent() == null || item.getContent().isBlank()) continue;
@@ -110,13 +118,64 @@ public class GenAiChatService {
             String geminiReply = chatModel.call(new Prompt(msgs))
                 .getResult().getOutput().getText();
             if (geminiReply != null && !geminiReply.isBlank()) {
-                return geminiReply.trim();
+                return new GenAiChatResponse(geminiReply.trim());
             }
         } catch (Exception ex) {
             logger.warn("Gemini chat request failed", ex);
         }
 
-        return "Tell me what you'd like — create a team, project, or sprint, or ask about workload. I'll do it in the workspace.";
+        return new GenAiChatResponse(
+            "Tell me what you'd like — create a team, project, or sprint, or ask about workload. I'll do it in the workspace.");
+    }
+
+    private boolean isMutationAction(Action action) {
+        return action == Action.CREATE_TEAM
+            || action == Action.CREATE_PROJECT
+            || action == Action.CREATE_SPRINT
+            || action == Action.CREATE_TASK
+            || action == Action.COMPLETE_TASK;
+    }
+
+    private boolean isWorkspaceSuccess(String reply) {
+        if (reply == null) {
+            return false;
+        }
+        String trimmed = reply.trim();
+        return trimmed.startsWith("Done —") || trimmed.startsWith("Done -");
+    }
+
+    private boolean indicatesWorkspaceMutation(String reply) {
+        if (reply == null || reply.isBlank()) {
+            return false;
+        }
+        String lower = reply.toLowerCase(Locale.ROOT);
+        return lower.contains("tarea creada")
+            || lower.contains("created the task")
+            || lower.contains("i created the task")
+            || lower.contains("marked as completed")
+            || lower.contains("marked as done")
+            || lower.contains("eliminad")
+            || lower.contains("deleted")
+            || lower.contains("updated")
+            || lower.contains("actualiz");
+    }
+
+    private String buildSystemPrompt(GenAiChatRequest request) {
+        String userName = request.getUserName();
+        String userRole = request.getUserRole();
+        if ((userName == null || userName.isBlank()) && (userRole == null || userRole.isBlank())) {
+            return LUMI_SYSTEM_PROMPT;
+        }
+        StringBuilder prompt = new StringBuilder(LUMI_SYSTEM_PROMPT);
+        prompt.append("\nYou are talking to a signed-in user:");
+        if (userName != null && !userName.isBlank()) {
+            prompt.append(" name: ").append(userName.trim()).append(".");
+        }
+        if (userRole != null && !userRole.isBlank()) {
+            prompt.append(" role: ").append(userRole.trim()).append(".");
+        }
+        prompt.append("\nGreet and refer to them by their name. Never call them a guest.");
+        return prompt.toString();
     }
 
     private boolean looksLikeTaskQuery(String message) {

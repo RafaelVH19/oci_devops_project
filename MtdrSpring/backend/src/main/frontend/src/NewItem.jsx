@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Bug, ListTodo, Plus, X } from 'lucide-react';
-import DevTaskForm, { emptyTaskForm } from './components/dev/DevTaskForm';
+import DevTaskForm, { buildDependencyOptions, emptyTaskForm } from './components/dev/DevTaskForm';
 
-function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOptions }) {
+function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOptions, tasks }) {
   const [openMenu, setOpenMenu] = useState(null);
   const [formData, setFormData] = useState(emptyTaskForm);
   const panelRef = useRef(null);
@@ -39,6 +39,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOp
     { value: '', label: 'No sprint' },
     ...sprints.map((s) => ({ value: String(s.id), label: s.name })),
   ];
+  const dependencyOptions = buildDependencyOptions(tasks ?? []);
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -51,6 +52,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOp
         priority: formData.priority,
         isBug: formData.isBug,
         sprintId: formData.sprintId ? Number(formData.sprintId) : null,
+        dependsOnId: formData.dependsOnId ? Number(formData.dependsOnId) : null,
         ...(formData.assignedTo ? { assignedTo: Number(formData.assignedTo) } : {}),
       })
     )
@@ -111,6 +113,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOp
             setOpenMenu={setOpenMenu}
             sprintOptions={sprintOptions}
             assigneeOptions={assigneeOptions}
+            dependencyOptions={dependencyOptions}
             onSubmit={handleSubmit}
           />
         </div>
@@ -130,7 +133,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOp
   );
 }
 
-function NewItem({ addItem, isInserting, sprints, assigneeOptions }) {
+function NewItem({ addItem, isInserting, sprints, assigneeOptions, tasks }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -153,6 +156,7 @@ function NewItem({ addItem, isInserting, sprints, assigneeOptions }) {
         isInserting={isInserting}
         sprints={sprints}
         assigneeOptions={assigneeOptions}
+        tasks={tasks}
       />
     </>
   );
