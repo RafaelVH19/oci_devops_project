@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useOracleUser } from '../../hooks/useOracleUser';
 import {
   ArrowLeft,
   ArrowUp,
@@ -73,7 +74,7 @@ async function fetchJson(url, options) {
   return response.json();
 }
 
-async function callAssistantApi(message, history) {
+async function callAssistantApi(message, history, userContext) {
   const envUrl = import.meta.env.VITE_GENAI_API_URL;
   const endpoints = [envUrl, '/api/genai/chat'].filter(Boolean);
   for (const endpoint of endpoints) {
@@ -84,6 +85,7 @@ async function callAssistantApi(message, history) {
         body: JSON.stringify({
           message,
           history: history.slice(-10).map((item) => ({ role: item.role, content: item.content })),
+          userContext,
         }),
       });
       if (!response.ok) continue;
@@ -119,8 +121,10 @@ function findUsersByNames(users, names) {
     .filter(Boolean);
 }
 
-async function runSmartAction(message) {
+async function runSmartAction(message, userContext) {
   const lower = normalize(message);
+  const isManager = userContext?.role === 'MANAGER';
+  const userId = userContext?.oracleUserId;
 
   if (lower.includes('create team') || lower.includes('crear team') || lower.includes('crear equipo')) {
     const users = await fetchJson('/users');
@@ -250,26 +254,55 @@ async function runSmartAction(message) {
     lower.includes('workload')
   ) {
     const tasks = await fetchJson('/tasks');
-    const openTasks = tasks.filter((task) => task.status !== 'DONE');
+    const scopedTasks = isManager ? tasks : tasks.filter((task) => task.assignedTo === userId);
+    const openTasks = scopedTasks.filter((task) => task.status !== 'DONE');
     const remainingHours = openTasks.reduce(
       (sum, task) => sum + Math.max((task.expectedHours || 0) - (task.hoursDone || 0), 0),
       0
     );
-    const totalExpected = tasks.reduce((sum, task) => sum + (task.expectedHours || 0), 0);
-    const totalDone = tasks.reduce((sum, task) => sum + (task.hoursDone || 0), 0);
+    const totalExpected = scopedTasks.reduce((sum, task) => sum + (task.expectedHours || 0), 0);
+    const totalDone = scopedTasks.reduce((sum, task) => sum + (task.hoursDone || 0), 0);
+    const scope = isManager ? 'Team' : 'Your';
     return {
       handled: true,
-      text: `This week snapshot: ${remainingHours}h remaining, ${totalDone}h done out of ${totalExpected}h planned.`,
+      text: `${scope} workload snapshot: ${remainingHours}h remaining, ${totalDone}h done out of ${totalExpected}h planned.`,
     };
+  }
+
+  const wantsMyTasks =
+    lower.includes('my tasks') ||
+    lower.includes('what tasks') ||
+    lower.includes('what should i do') ||
+    lower.includes('what should i work') ||
+    lower.includes('pending tasks') ||
+    lower.includes('mis tareas') ||
+    lower.includes('qué tareas') ||
+    lower.includes('que tareas') ||
+    lower.includes('qué debo hacer') ||
+    lower.includes('que debo hacer') ||
+    lower.includes('tareas pendientes');
+
+  if (wantsMyTasks) {
+    const tasks = await fetchJson('/tasks');
+    if (isManager) {
+      const openTasks = tasks.filter((task) => task.status !== 'DONE');
+      if (openTasks.length === 0) return { handled: true, text: 'No pending tasks for the project right now.' };
+      const list = openTasks.slice(0, 10).map((t) => `• ${t.title} (${t.status})`).join('\n');
+      return { handled: true, text: `Here are all pending project tasks:\n${list}` };
+    }
+    const myOpen = tasks.filter((task) => task.assignedTo === userId && task.status !== 'DONE');
+    if (myOpen.length === 0) return { handled: true, text: 'You have no pending tasks right now. Great job!' };
+    const list = myOpen.slice(0, 10).map((t) => `• ${t.title} (${t.status})`).join('\n');
+    return { handled: true, text: `Here are your pending tasks:\n${list}` };
   }
 
   return { handled: false, text: '' };
 }
 
-async function replyForMessage(message, history) {
-  const apiResult = await callAssistantApi(message, history);
+async function replyForMessage(message, history, userContext) {
+  const apiResult = await callAssistantApi(message, history, userContext);
   if (apiResult.ok) return apiResult.text;
-  const actionResult = await runSmartAction(message);
+  const actionResult = await runSmartAction(message, userContext);
   if (actionResult.handled) return actionResult.text;
   return 'Tell me what you need in plain language — for example: "Set up a team called Platform Crew with Alex and Jessie."';
 }
@@ -394,6 +427,8 @@ function LumiComposer({ draft, setDraft, loading, onSend }) {
 }
 
 function LumiAssistant() {
+  const { displayName, email: userEmail, oracleUserId, role } = useOracleUser();
+
   const [chats, setChats] = useState(readChats);
   const [selectedChatId, setSelectedChatId] = useState(() => readChats()[0]?.id);
   const [activeView, setActiveView] = useState(VIEW_NEW);
@@ -403,9 +438,11 @@ function LumiAssistant() {
   const [heroLine] = useState('Hi, how can I help you today?');
   const [chatMenuOpenId, setChatMenuOpenId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [profileName] = useState('Guest');
-  const [profileEmail] = useState('');
-  const [profileAvatar] = useState('');
+
+  const profileName = displayName;
+  const profileEmail = userEmail || '';
+  const profileAvatar = '';
+  const userContext = { role, oracleUserId };
 
   useEffect(() => {
     const faviconLink = document.getElementById('favicon');
@@ -499,7 +536,7 @@ function LumiAssistant() {
     setLoading(true);
 
     try {
-      const responseText = await replyForMessage(text, baseChat.messages);
+      const responseText = await replyForMessage(text, baseChat.messages, userContext);
       const assistantMessage = buildAssistantMessage(responseText);
       updateChats(
         nextBeforeReply.map((chat) =>

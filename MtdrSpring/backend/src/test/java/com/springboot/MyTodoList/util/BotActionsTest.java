@@ -300,7 +300,7 @@ class BotActionsTest {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         developer.setRole("DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(developer));
-        when(agentOrchestrator.handleMessage(any(String.class), any(String.class))).thenReturn("Hola DEVELOPER");
+        when(agentOrchestrator.handleMessage(any(String.class), any(String.class), any(String.class))).thenReturn("Hola DEVELOPER");
         botActions.setRequestText("hola bot");
 
         botActions.fnElse();
@@ -311,7 +311,7 @@ class BotActionsTest {
 
     @Test
     void fnElseHandlesAgentFailure() throws Exception {
-        when(agentOrchestrator.handleMessage(any(String.class), any(String.class)))
+        when(agentOrchestrator.handleMessage(any(String.class), any(String.class), any(String.class)))
                 .thenThrow(new RuntimeException("boom"));
         botActions.setRequestText("hola bot");
 

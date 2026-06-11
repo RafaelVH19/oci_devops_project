@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Bug, ChevronDown, Filter, Layers, ListTodo } from 'lucide-react';
+import { Bug, ChevronDown, Filter, Layers, ListTodo, UserRound } from 'lucide-react';
 
 export const emptyTaskForm = {
   title: '',
@@ -9,6 +9,7 @@ export const emptyTaskForm = {
   priority: 'MEDIUM',
   isBug: false,
   sprintId: '',
+  assignedTo: '',
 };
 
 export function taskToFormData(task) {
@@ -19,6 +20,7 @@ export function taskToFormData(task) {
     priority: task.priority ?? 'MEDIUM',
     isBug: Boolean(task.isBug),
     sprintId: task.sprint?.id ? String(task.sprint.id) : '',
+    assignedTo: task.assignedTo != null ? String(task.assignedTo) : '',
   };
 }
 
@@ -189,9 +191,11 @@ export default function DevTaskForm({
   openMenu,
   setOpenMenu,
   sprintOptions,
+  assigneeOptions,
   onSubmit,
   priorityDropdownId = 'priority',
   sprintDropdownId = 'sprint',
+  assigneeDropdownId = 'assignee',
 }) {
   const priorityOptions = [
     { value: 'LOW', label: 'Low' },
@@ -203,6 +207,8 @@ export default function DevTaskForm({
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   }
+
+  const showAssignee = assigneeOptions && assigneeOptions.length > 0;
 
   return (
     <form id={formId} onSubmit={onSubmit} className="space-y-6">
@@ -271,6 +277,18 @@ export default function DevTaskForm({
           setOpenMenu={setOpenMenu}
           onChange={(next) => setFormData((prev) => ({ ...prev, sprintId: next === '' ? '' : String(next) }))}
         />
+        {showAssignee && (
+          <UnderlineDropdown
+            id={assigneeDropdownId}
+            label="Assign to"
+            value={formData.assignedTo === '' ? '' : String(formData.assignedTo)}
+            options={assigneeOptions}
+            icon={UserRound}
+            openMenu={openMenu}
+            setOpenMenu={setOpenMenu}
+            onChange={(next) => setFormData((prev) => ({ ...prev, assignedTo: next === '' ? '' : String(next) }))}
+          />
+        )}
         <TaskTypeToggle isBug={formData.isBug} onChange={(next) => setFormData((prev) => ({ ...prev, isBug: next }))} />
       </div>
     </form>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Bug, ListTodo, Plus, X } from 'lucide-react';
 import DevTaskForm, { emptyTaskForm } from './components/dev/DevTaskForm';
 
-function AddTaskModal({ open, onClose, addItem, isInserting, sprints }) {
+function AddTaskModal({ open, onClose, addItem, isInserting, sprints, assigneeOptions }) {
   const [openMenu, setOpenMenu] = useState(null);
   const [formData, setFormData] = useState(emptyTaskForm);
   const panelRef = useRef(null);
@@ -51,6 +51,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints }) {
         priority: formData.priority,
         isBug: formData.isBug,
         sprintId: formData.sprintId ? Number(formData.sprintId) : null,
+        ...(formData.assignedTo ? { assignedTo: Number(formData.assignedTo) } : {}),
       })
     )
       .then(() => onClose())
@@ -109,6 +110,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints }) {
             openMenu={openMenu}
             setOpenMenu={setOpenMenu}
             sprintOptions={sprintOptions}
+            assigneeOptions={assigneeOptions}
             onSubmit={handleSubmit}
           />
         </div>
@@ -128,7 +130,7 @@ function AddTaskModal({ open, onClose, addItem, isInserting, sprints }) {
   );
 }
 
-function NewItem({ addItem, isInserting, sprints }) {
+function NewItem({ addItem, isInserting, sprints, assigneeOptions }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -150,6 +152,7 @@ function NewItem({ addItem, isInserting, sprints }) {
         addItem={addItem}
         isInserting={isInserting}
         sprints={sprints}
+        assigneeOptions={assigneeOptions}
       />
     </>
   );

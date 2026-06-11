@@ -471,6 +471,7 @@ public class BotActions{
         List<Task> tasks = taskService.findAll();
         List<Task> assignedTasks = tasks.stream()
                 .filter(t -> user.getId() != null && user.getId().equals(t.getAssignedTo()))
+                .filter(t -> !TaskStatus.DONE.equals(t.getStatus()))
                 .collect(Collectors.toList());
 
         String msg = BotMessages.TASK_LIST_HEADER.getMessage();
@@ -779,7 +780,8 @@ public class BotActions{
         try {
             User currentUser = findUserByTelegramId(String.valueOf(telegramUserId));
             String userRole = currentUser != null ? currentUser.getRole() : null;
-            String response = agentOrchestrator.handleMessage(requestText, userRole);
+            String userName = currentUser != null ? currentUser.getName() : null;
+            String response = agentOrchestrator.handleMessage(requestText, userRole, userName);
             if (response != null && !response.isBlank()) {
                 if (isCommandLike(response)) {
                     if (dispatchDerivedCommand(response.trim())) {
