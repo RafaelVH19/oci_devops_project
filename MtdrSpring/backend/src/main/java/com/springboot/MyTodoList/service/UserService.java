@@ -148,6 +148,25 @@ public class UserService {
         return true;
     }
 
+    /** Checks a raw password against the user's stored BCrypt hash. */
+    public boolean passwordMatches(User user, String rawPassword) {
+        if (user == null
+                || rawPassword == null || rawPassword.isBlank()
+                || user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            return false;
+        }
+        return passwordEncoder.matches(rawPassword, user.getPasswordHash());
+    }
+
+    /** Links (or unlinks, with null) a Telegram account to a user without touching other fields. */
+    public User updateTelegramId(Long userId, String telegramId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new EntityNotFoundException("User not found with id: " + userId));
+        user.setTelegramId(telegramId);
+        return userRepository.save(user);
+    }
+
     public User updateUser(long id, User userToUpdate) {
         User user = userRepository.findById(id)
                 .orElseThrow(() ->

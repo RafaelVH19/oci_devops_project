@@ -12,7 +12,7 @@ import API_LIST from './API';
 import { DevAppSkeleton } from './components/dashboard/DashboardSkeletons';
 import DevTaskRow from './components/dev/DevTaskRow';
 import DevTaskCalendar from './components/dev/DevTaskCalendar';
-import DevLumiPromoToast from './components/dev/DevLumiPromoToast';
+import DevLumiPill from './components/dev/DevLumiPill';
 import AppToast from './components/ui/AppToast';
 import HeaderAccountActions from './components/ui/HeaderAccountActions';
 import EditTaskModal from './components/dev/EditTaskModal';
@@ -301,6 +301,34 @@ function App() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Silent refresh when Lumi (or another component) changes the workspace,
+  // so new tasks/sprints show up without a manual page reload.
+  useEffect(() => {
+    let refreshing = false;
+    async function handleWorkspaceChanged() {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const [tasksResponse, sprintsResponse] = await Promise.all([
+          fetch(API_LIST),
+          fetch('/sprints'),
+        ]);
+        if (tasksResponse.ok) setItems(await tasksResponse.json());
+        if (sprintsResponse.ok) {
+          const sprintResult = await sprintsResponse.json();
+          setSprints(sprintResult);
+          setCurrentSprint((prev) => prev ?? determineCurrentSprint(sprintResult));
+        }
+      } catch {
+        // keep current data if the refresh fails
+      } finally {
+        refreshing = false;
+      }
+    }
+    window.addEventListener('lumen:workspace-changed', handleWorkspaceChanged);
+    return () => window.removeEventListener('lumen:workspace-changed', handleWorkspaceChanged);
   }, []);
 
   useEffect(() => {
@@ -701,7 +729,7 @@ function App() {
         onSaved={(updated) => handleTaskSaved(updated, 'Task updated')}
         onError={showError}
       />
-      <DevLumiPromoToast />
+      <DevLumiPill />
       <AppToast toast={toast} onDismiss={dismissToast} />
     </section>
   );

@@ -119,21 +119,38 @@ function resolveTasksForHome(tasksResult) {
 function DashboardHome() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
+  const [teamMemberIds, setTeamMemberIds] = useState(null);
   const [tasksFromApi, setTasksFromApi] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [tasksResult, usersResult] = await Promise.all([
+      const [tasksResult, usersResult, teamsResult] = await Promise.all([
         fetchJsonSafe('/tasks'),
         fetchJsonSafe('/api/users'),
+        fetchJsonSafe('/teams'),
       ]);
 
       if (!cancelled) {
         setTasks(resolveTasksForHome(tasksResult));
         setTasksFromApi(tasksResult.ok && (tasksResult.data?.length ?? 0) > 0);
         setUsers(usersResult.ok && Array.isArray(usersResult.data) ? usersResult.data : []);
+
+        // KPIs only count people who actually belong to a team; users with tasks
+        // but no team membership (e.g. leftover seed users) are excluded.
+        if (teamsResult.ok && Array.isArray(teamsResult.data) && teamsResult.data.length > 0) {
+          const ids = new Set();
+          teamsResult.data.forEach((team) => {
+            if (team.managerId != null) ids.add(team.managerId);
+            (team.users || []).forEach((member) => {
+              if (member?.id != null) ids.add(member.id);
+            });
+          });
+          setTeamMemberIds(ids);
+        } else {
+          setTeamMemberIds(null);
+        }
         setLoading(false);
       }
     })();
@@ -142,13 +159,25 @@ function DashboardHome() {
     };
   }, []);
 
-  const memberChart = useMemo(() => buildMemberPoints(tasks, users), [tasks, users]);
-  const activityItems = useMemo(() => buildActivity(tasks, users), [tasks, users]);
+  const scopedUsers = useMemo(
+    () => (teamMemberIds ? users.filter((user) => teamMemberIds.has(user.id)) : users),
+    [users, teamMemberIds]
+  );
+  const scopedTasks = useMemo(
+    () =>
+      teamMemberIds
+        ? tasks.filter((task) => task.assignedTo == null || teamMemberIds.has(task.assignedTo))
+        : tasks,
+    [tasks, teamMemberIds]
+  );
+
+  const memberChart = useMemo(() => buildMemberPoints(scopedTasks, scopedUsers), [scopedTasks, scopedUsers]);
+  const activityItems = useMemo(() => buildActivity(scopedTasks, scopedUsers), [scopedTasks, scopedUsers]);
 
   const burndownData = useMemo(() => {
-    if (tasksFromApi && tasks.length > 0) {
-      const total = tasks.length;
-      const done = tasks.filter((t) => t.status === 'DONE').length;
+    if (tasksFromApi && scopedTasks.length > 0) {
+      const total = scopedTasks.length;
+      const done = scopedTasks.filter((t) => t.status === 'DONE').length;
       const remaining = Math.max(total - done, 0);
       const steps = 6;
       const actual = Array.from({ length: steps }, (_, i) =>
@@ -166,7 +195,7 @@ function DashboardHome() {
       labels: burndownLabels,
       datasets: buildBurndownDatasets(burndownActual, burndownIdeal),
     };
-  }, [tasks, tasksFromApi]);
+  }, [scopedTasks, tasksFromApi]);
 
   const memberBarData = useMemo(
     () => buildMemberBarDataset(memberChart.labels, memberChart.data),

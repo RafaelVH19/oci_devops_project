@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isDemoMode } from '../config/demoMode';
 import { useSession } from '../lib/auth-client';
 
@@ -9,6 +9,11 @@ export function useOracleUser() {
   const { data: session, isPending: sessionPending } = useSession();
   const [oracleUser, setOracleUser] = useState(null);
   const [loading, setLoading] = useState(!isDemoMode);
+  // Tracks the email already loaded so focus-triggered session refetches
+  // (e.g. alt-tab) don't flip `loading` and remount skeletons.
+  const loadedEmailRef = useRef(null);
+
+  const email = session?.user?.email ?? null;
 
   useEffect(() => {
     if (isDemoMode) {
@@ -20,9 +25,14 @@ export function useOracleUser() {
       return undefined;
     }
 
-    const email = session?.user?.email;
     if (!email) {
+      loadedEmailRef.current = null;
       setOracleUser(null);
+      setLoading(false);
+      return undefined;
+    }
+
+    if (loadedEmailRef.current === email) {
       setLoading(false);
       return undefined;
     }
@@ -36,6 +46,7 @@ export function useOracleUser() {
         if (cancelled) return;
         if (res.ok) {
           setOracleUser(await res.json());
+          loadedEmailRef.current = email;
         } else {
           setOracleUser(null);
         }
@@ -49,7 +60,7 @@ export function useOracleUser() {
     return () => {
       cancelled = true;
     };
-  }, [session, sessionPending]);
+  }, [email, sessionPending]);
 
   return {
     session,

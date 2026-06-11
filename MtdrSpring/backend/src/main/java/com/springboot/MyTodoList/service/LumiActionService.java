@@ -38,6 +38,7 @@ public class LumiActionService {
     private final UserRepository userRepository;
     private final SprintService sprintService;
     private final TaskService taskService;
+    private final SprintTaskService sprintTaskService;
 
     public LumiActionService(UserService userService,
                              TeamService teamService,
@@ -45,7 +46,8 @@ public class LumiActionService {
                              TeamMemberRepository teamMemberRepository,
                              UserRepository userRepository,
                              SprintService sprintService,
-                             TaskService taskService) {
+                             TaskService taskService,
+                             SprintTaskService sprintTaskService) {
         this.userService = userService;
         this.teamService = teamService;
         this.teamMemberService = teamMemberService;
@@ -53,6 +55,7 @@ public class LumiActionService {
         this.userRepository = userRepository;
         this.sprintService = sprintService;
         this.taskService = taskService;
+        this.sprintTaskService = sprintTaskService;
     }
 
     public Optional<String> tryHandle(String message) {
@@ -79,6 +82,10 @@ public class LumiActionService {
     }
 
     public Optional<String> executePlan(LumiActionPlan plan) {
+        return executePlan(plan, null);
+    }
+
+    public Optional<String> executePlan(LumiActionPlan plan, String currentUserName) {
         if (plan == null || !plan.isExecutable()) {
             return Optional.empty();
         }
@@ -87,6 +94,8 @@ public class LumiActionService {
             case CREATE_TEAM -> Optional.of(executeCreateTeam(plan));
             case CREATE_PROJECT -> Optional.of(executeCreateProject(plan));
             case CREATE_SPRINT -> Optional.of(executeCreateSprint(plan));
+            case CREATE_TASK -> Optional.of(executeCreateTask(plan, currentUserName));
+            case COMPLETE_TASK -> Optional.of(executeCompleteTask(plan, currentUserName));
             case WORKLOAD -> Optional.of(handleWorkload());
             default -> Optional.empty();
         };
@@ -172,6 +181,183 @@ public class LumiActionService {
             plan.getStartDate(),
             plan.getEndDate()
         );
+    }
+
+    private String executeCreateTask(LumiActionPlan plan, String currentUserName) {
+        if (plan.getTaskTitle() == null || plan.getTaskTitle().isBlank()) {
+            return "What should the task be called?";
+        }
+
+        List<User> users = userService.findAll();
+        User assignee = resolveAssignee(plan.getAssigneeName(), currentUserName, users);
+        if (assignee == null) {
+            return "Who should I assign \"" + plan.getTaskTitle().trim()
+                + "\" to? People in the workspace: " + listDeveloperNames();
+        }
+
+        Sprint sprint = plan.getSprintName() != null && !plan.getSprintName().isBlank()
+            ? findSprintByName(plan.getSprintName())
+            : null;
+
+        Task task = new Task();
+        task.setTitle(plan.getTaskTitle().trim());
+        task.setDescription(plan.getTaskDescription() != null ? plan.getTaskDescription().trim() : null);
+        task.setExpectedHours(plan.getExpectedHours() != null ? plan.getExpectedHours() : 1);
+        task.setHoursDone(0);
+        task.setPriority(resolvePriority(plan, sprint));
+        task.setStatus(TaskStatus.PENDING);
+        task.setIsBug(false);
+        task.setAssignedTo(assignee.getId());
+        task.setCreatedBy(assignee.getId());
+        Task created = taskService.add(task);
+
+        StringBuilder reply = new StringBuilder("Done — I created the task **")
+            .append(created.getTitle())
+            .append("**:\n- Assignee: ").append(safeName(assignee))
+            .append("\n- Estimate: ").append(task.getExpectedHours()).append("h")
+            .append("\n- Priority: ").append(task.getPriority());
+
+        if (sprint != null) {
+            com.springboot.MyTodoList.model.SprintTask link = new com.springboot.MyTodoList.model.SprintTask();
+            link.setTaskId(created.getId());
+            link.setSprintId(sprint.getId());
+            sprintTaskService.add(link);
+            reply.append("\n- Sprint: ").append(sprint.getName());
+        } else if (plan.getSprintName() != null && !plan.getSprintName().isBlank()) {
+            reply.append("\n- Sprint: I couldn't find \"").append(plan.getSprintName().trim())
+                .append("\", so the task is in the backlog.");
+        }
+
+        return reply.toString();
+    }
+
+    private String executeCompleteTask(LumiActionPlan plan, String currentUserName) {
+        List<Task> openTasks = taskService.findAll().stream()
+            .filter(task -> task.getStatus() != TaskStatus.DONE)
+            .collect(java.util.stream.Collectors.toList());
+
+        if (openTasks.isEmpty()) {
+            return "There are no open tasks right now — everything is already done.";
+        }
+
+        if (plan.getTaskTitle() == null || plan.getTaskTitle().isBlank()) {
+            return "Which task should I mark as done?\n" + listOpenTaskTitles(openTasks);
+        }
+
+        String hint = normalize(plan.getTaskTitle());
+        List<Task> matches = openTasks.stream()
+            .filter(task -> {
+                String title = normalize(task.getTitle());
+                return title.contains(hint) || hint.contains(title);
+            })
+            .collect(java.util.stream.Collectors.toList());
+
+        if (matches.isEmpty()) {
+            return "I couldn't find an open task matching \"" + plan.getTaskTitle().trim()
+                + "\". These are open right now:\n" + listOpenTaskTitles(openTasks);
+        }
+
+        if (matches.size() > 1) {
+            User self = resolveAssignee(null, currentUserName, userService.findAll());
+            if (self != null) {
+                List<Task> mine = matches.stream()
+                    .filter(task -> self.getId().equals(task.getAssignedTo()))
+                    .collect(java.util.stream.Collectors.toList());
+                if (mine.size() == 1) {
+                    matches = mine;
+                }
+            }
+            if (matches.size() > 1) {
+                return "I found more than one open task matching that — which one do you mean?\n"
+                    + listOpenTaskTitles(matches);
+            }
+        }
+
+        Task task = matches.get(0);
+        Integer hours = plan.getHoursDone() != null
+            ? plan.getHoursDone()
+            : (task.getExpectedHours() != null ? task.getExpectedHours() : task.getHoursDone());
+        task.setStatus(TaskStatus.DONE);
+        if (hours != null) {
+            task.setHoursDone(hours);
+        }
+        taskService.update(task.getId(), task);
+
+        return "Done — **" + task.getTitle() + "** is marked as completed"
+            + (hours != null ? " (" + hours + "h logged)." : ".");
+    }
+
+    private String listOpenTaskTitles(List<Task> tasks) {
+        return tasks.stream()
+            .limit(8)
+            .map(task -> "- " + task.getTitle())
+            .reduce((a, b) -> a + "\n" + b)
+            .orElse("- (none)");
+    }
+
+    /**
+     * Priority from the plan when the model provided it; otherwise inferred from how close
+     * today is to the task's target date (its due date, or the end of its sprint).
+     */
+    private com.springboot.MyTodoList.model.enums.TaskPriority resolvePriority(LumiActionPlan plan, Sprint sprint) {
+        if (plan.getTaskPriority() != null) {
+            try {
+                return com.springboot.MyTodoList.model.enums.TaskPriority
+                    .valueOf(plan.getTaskPriority().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ignored) {
+                // fall through to date-based inference
+            }
+        }
+
+        LocalDateTime target = null;
+        if (plan.getTaskDueDate() != null) {
+            target = parseDate(plan.getTaskDueDate());
+        }
+        if (target == null && sprint != null && sprint.getEndDate() != null) {
+            target = sprint.getEndDate();
+        }
+        if (target == null) {
+            return com.springboot.MyTodoList.model.enums.TaskPriority.MEDIUM;
+        }
+
+        long daysUntil = java.time.Duration.between(LocalDateTime.now(), target).toDays();
+        if (daysUntil <= 2) {
+            return com.springboot.MyTodoList.model.enums.TaskPriority.HIGH;
+        }
+        if (daysUntil <= 7) {
+            return com.springboot.MyTodoList.model.enums.TaskPriority.MEDIUM;
+        }
+        return com.springboot.MyTodoList.model.enums.TaskPriority.LOW;
+    }
+
+    private User resolveAssignee(String assigneeHint, String currentUserName, List<User> users) {
+        String hint = normalize(assigneeHint);
+        boolean isSelf = hint.isEmpty()
+            || hint.equals("me") || hint.equals("yo") || hint.equals("i") || hint.equals("myself");
+
+        if (!isSelf) {
+            List<User> matched = findUsersByNames(users, List.of(assigneeHint));
+            if (!matched.isEmpty()) {
+                return matched.get(0);
+            }
+        }
+
+        if (currentUserName != null && !currentUserName.isBlank()) {
+            List<User> self = findUsersByNames(users, List.of(currentUserName));
+            if (!self.isEmpty()) {
+                return self.get(0);
+            }
+        }
+        return null;
+    }
+
+    private Sprint findSprintByName(String sprintNameHint) {
+        String hint = normalize(sprintNameHint);
+        return sprintService.findAll().stream()
+            .filter(sprint -> normalize(sprint.getName()).contains(hint)
+                || hint.contains(normalize(sprint.getName())))
+            .findFirst()
+            .orElse(null);
     }
 
     private String handleCreateTeamFromData(String teamName, List<String> memberNames, String managerNameHint) {

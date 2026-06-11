@@ -11,6 +11,8 @@ public class LumiActionPlan {
         CREATE_TEAM,
         CREATE_PROJECT,
         CREATE_SPRINT,
+        CREATE_TASK,
+        COMPLETE_TASK,
         WORKLOAD,
         TASK_QUERY
     }
@@ -24,6 +26,13 @@ public class LumiActionPlan {
     private String sprintName;
     private String startDate;
     private String endDate;
+    private String taskTitle;
+    private String taskDescription;
+    private String assigneeName;
+    private Integer expectedHours;
+    private String taskPriority;
+    private String taskDueDate;
+    private Integer hoursDone;
     private boolean needsClarification;
     private String clarificationQuestion;
 
@@ -97,6 +106,62 @@ public class LumiActionPlan {
 
     public void setEndDate(String endDate) {
         this.endDate = endDate;
+    }
+
+    public String getTaskTitle() {
+        return taskTitle;
+    }
+
+    public void setTaskTitle(String taskTitle) {
+        this.taskTitle = taskTitle;
+    }
+
+    public String getTaskDescription() {
+        return taskDescription;
+    }
+
+    public void setTaskDescription(String taskDescription) {
+        this.taskDescription = taskDescription;
+    }
+
+    public String getAssigneeName() {
+        return assigneeName;
+    }
+
+    public void setAssigneeName(String assigneeName) {
+        this.assigneeName = assigneeName;
+    }
+
+    public Integer getExpectedHours() {
+        return expectedHours;
+    }
+
+    public void setExpectedHours(Integer expectedHours) {
+        this.expectedHours = expectedHours;
+    }
+
+    public String getTaskPriority() {
+        return taskPriority;
+    }
+
+    public void setTaskPriority(String taskPriority) {
+        this.taskPriority = taskPriority;
+    }
+
+    public String getTaskDueDate() {
+        return taskDueDate;
+    }
+
+    public void setTaskDueDate(String taskDueDate) {
+        this.taskDueDate = taskDueDate;
+    }
+
+    public Integer getHoursDone() {
+        return hoursDone;
+    }
+
+    public void setHoursDone(Integer hoursDone) {
+        this.hoursDone = hoursDone;
     }
 
     public boolean isNeedsClarification() {

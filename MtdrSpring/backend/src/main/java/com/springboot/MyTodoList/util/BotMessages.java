@@ -7,9 +7,21 @@ package com.springboot.MyTodoList.util;
 public enum BotMessages {
 	
 	WELCOME(
-	"Hola! Soy el chatbot para JavaPlan!\n Ingrese alguno de los comandos disponibles: \n /register - para validar el usuario \n /addtask - para agregar una tarea a la lista \n /deletetask - para eliminar una tarea \n /assigntask - para asignar una tarea a un sprint \n /completetask - para marcar una tarea como completada \n /mytasks - para ver todas las tareas"),
+	"Hola! Soy el chatbot para JavaPlan!\n Ingrese alguno de los comandos disponibles: \n /register <correo> - para vincular tu cuenta \n /logout - para desvincular tu cuenta \n /addtask - para agregar una tarea a la lista \n /deletetask - para eliminar una tarea \n /assigntask - para asignar una tarea a un sprint \n /completetask - para marcar una tarea como completada \n /mytasks - para ver todas las tareas"),
 	USER_OK("Usuario reconocido, bienvenido"),
 	USER_NOT_FOUND("Usuario no encontrado."),
+
+	REGISTER_USAGE("Para vincular tu cuenta envía: /register tu@correo.com (el correo con el que te invitaron)."),
+	REGISTER_EMAIL_NOT_FOUND("No encontré ese correo en el sistema. Pide a tu manager que te invite primero."),
+	REGISTER_EMAIL_TAKEN("Ese correo ya está vinculado a otra cuenta de Telegram. Cierra sesión desde esa cuenta con /logout."),
+	REGISTER_TELEGRAM_IN_USE("Este Telegram ya está vinculado a otro usuario. Usa /logout primero."),
+	REGISTER_ASK_PASSWORD("Correo encontrado. Ahora envía tu contraseña para vincular tu cuenta."),
+	REGISTER_WRONG_PASSWORD("Contraseña incorrecta. Intenta de nuevo o envía /register <correo> para reiniciar."),
+	REGISTER_NO_PASSWORD("Tu cuenta aún no tiene contraseña. Inicia sesión en la web para configurarla y vuelve a intentar."),
+	REGISTER_EXPIRED("El registro expiró. Vuelve a enviar /register <correo>."),
+	REGISTER_LINKED("Cuenta vinculada exitosamente! Bienvenido"),
+	LOGOUT_OK("Sesión cerrada. Tu Telegram ya no está vinculado. Usa /register <correo> para volver a entrar."),
+	LOGOUT_NOT_LINKED("Este Telegram no está vinculado a ningún usuario."),
 
 	TASK_CREATED("Tarea creada exitosamente!"),
 	TASK_ERROR("Error al crear la tarea. Asegúrate de usar el formato correcto: /addtask \"<titulo>\" | \"<descripcion>\" | <horas esperadas> | <prioridad (LOW, MEDIUM, HIGH)> | <es bug (true/false)> | <ID de Usuario>"),
