@@ -94,7 +94,7 @@ function DashboardTeam() {
       showError('Invite requires name and email.');
       return;
     }
-    const response = await fetch('/invite-user', {
+    const response = await fetch('/api/users/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -24,7 +24,6 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/users': { target: 'http://localhost:8080', changeOrigin: true },
-      '/invite-user': { target: 'http://localhost:8080', changeOrigin: true },
       '/teams': { target: 'http://localhost:8080', changeOrigin: true },
       '/team-members': { target: 'http://localhost:8080', changeOrigin: true },
       '/sprints': { target: 'http://localhost:8080', changeOrigin: true },
