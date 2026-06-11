@@ -32,7 +32,7 @@ export function useOracleUser() {
 
     (async () => {
       try {
-        const res = await fetch(`/users/by-email?email=${encodeURIComponent(email)}`);
+        const res = await fetch(`/api/users/by-email?email=${encodeURIComponent(email)}`);
         if (cancelled) return;
         if (res.ok) {
           setOracleUser(await res.json());

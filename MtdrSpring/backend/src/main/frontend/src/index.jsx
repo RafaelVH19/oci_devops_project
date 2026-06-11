@@ -17,6 +17,7 @@ import Landing from './Landing';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import RequireAuth from './components/RequireAuth';
+import RequireManager from './components/RequireManager';
 import LumiAssistant from './components/dashboard/LumiAssistant';
 import DemoBanner from './components/DemoBanner';
 import { isDemoMode } from './config/demoMode';
@@ -47,7 +48,9 @@ createRoot(document.getElementById('root')).render(
           path="/dashboard/*"
           element={
             <RequireAuth>
-              <Dashboard />
+              <RequireManager>
+                <Dashboard />
+              </RequireManager>
             </RequireAuth>
           }
         />

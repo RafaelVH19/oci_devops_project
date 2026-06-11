@@ -50,7 +50,7 @@ function DashboardHeader() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/users');
+        const res = await fetch('/api/users');
         if (!res.ok || cancelled) return;
         const users = await res.json();
         const primary = users?.[0];
