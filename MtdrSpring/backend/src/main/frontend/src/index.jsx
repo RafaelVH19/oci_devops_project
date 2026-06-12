@@ -22,10 +22,13 @@ import LumiAssistant from './components/dashboard/LumiAssistant';
 import DemoBanner from './components/DemoBanner';
 import { isDemoMode } from './config/demoMode';
 import { installDemoFetch } from './demo/installDemoFetch';
+import { installAuthFetch } from './lib/installAuthFetch';
 
 if (isDemoMode) {
   installDemoFetch();
   document.documentElement.classList.add('demo-mode-active');
+} else {
+  installAuthFetch();
 }
 
 createRoot(document.getElementById('root')).render(

@@ -29,6 +29,7 @@ app.use(
     credentials: true,
     allowHeaders: ['Content-Type', 'Authorization'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    exposeHeaders: ['set-auth-jwt'],
   }),
 );
 
@@ -94,11 +95,11 @@ app.post('/internal/users', async (c) => {
 
 app.get('/health', (c) => c.json({ ok: true }));
 
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`Auth server listening on http://localhost:${port}`);
+serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, () => {
+  console.log(`Auth server listening on all interfaces at port ${port}`);
 });
 
-// Run a background sync from the Spring Oracle user table on startup.
+// Runs a background sync from the Spring Oracle user table on startup.
 (async () => {
   try {
     await syncUsersFromSpring();

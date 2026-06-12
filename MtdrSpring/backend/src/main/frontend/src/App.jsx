@@ -86,6 +86,11 @@ function sortSprints(sprintList, currentSprint) {
   });
 }
 
+// The Authorization header is attached globally by installAuthFetch (see index.jsx).
+async function getAuthHeaders() {
+  return { 'Content-Type': 'application/json' };
+}
+
 function App() {
   const { displayName: oracleDisplayName, oracleUser, oracleUserId, loading: oracleUserLoading } = useOracleUser();
   const [isLoading, setLoading] = useState(true);
@@ -254,12 +259,20 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
+    console.log("DEBUG: useEffect triggered - Starting data load...");
     (async () => {
       try {
+        const headers = await getAuthHeaders();
+        console.log("DEBUG: Headers generated:", headers);
+        console.log("DEBUG: About to fetch tasks from:", API_LIST);
+
         const [tasksResponse, sprintsResponse] = await Promise.all([
-          fetch(API_LIST),
-          fetch('/sprints'),
+          fetch(API_LIST, { headers }),
+          fetch('/sprints', { headers }),
         ]);
+
+        console.log("DEBUG: Fetches completed");
+
         if (!tasksResponse.ok) throw new Error('Could not load tasks');
 
         const tasks = await tasksResponse.json();
@@ -314,69 +327,80 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [highlightedTaskId]);
 
-  function addItem(taskData) {
+  async function addItem(taskData) {
     setInserting(true);
-    const data = {
-      title: taskData.title,
-      description: taskData.description,
-      priority: taskData.priority,
-      expectedHours: taskData.expectedHours,
-      hoursDone: 0,
-      isBug: taskData.isBug,
-      assignedTo: oracleUserId || 1,
-      createdBy: oracleUserId || 1,
-      vector: 'web',
-    };
+    
+    try {
+      const data = {
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        expectedHours: taskData.expectedHours,
+        hoursDone: 0,
+        isBug: taskData.isBug,
+        assignedTo: oracleUserId || 1,
+        createdBy: oracleUserId || 1,
+        vector: 'web',
+      };
 
-    return fetch(API_LIST, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-      .then((response) => {
-        if (response.ok) return response;
-        throw new Error('Could not create task');
-      })
-      .then((result) => {
-        const id = Number(result.headers.get('location'));
-        if (!id) throw new Error('Task created but no location header was returned');
+      // 1. Grab headers once at the start
+      const headers = await getAuthHeaders();
 
-        if (!taskData.sprintId) {
-          return fetch(`${API_LIST}/${id}`).then((taskResponse) => {
-            if (!taskResponse.ok) throw new Error('Task created but it could not be reloaded');
-            return taskResponse.json();
-          });
-        }
+      // 2. Create the initial task
+      const response = await fetch(API_LIST, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data),
+      });
 
-        return fetch('/sprint-tasks', {
+      if (!response.ok) throw new Error('Could not create task');
+
+      const id = Number(response.headers.get('location'));
+      if (!id) throw new Error('Task created but no location header was returned');
+
+      let createdTask;
+
+      // 3. Handle sprint assignment & reload the task
+      if (!taskData.sprintId) {
+        const taskResponse = await fetch(`${API_LIST}/${id}`, { headers });
+        if (!taskResponse.ok) throw new Error('Task created but it could not be reloaded');
+        createdTask = await taskResponse.json();
+      } else {
+        const linkResponse = await fetch('/sprint-tasks', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers, // Re-use headers
           body: JSON.stringify({
             id: { sprintId: taskData.sprintId, taskId: id },
             addedAt: moment().format('YYYY-MM-DDTHH:mm:ss'),
           }),
-        }).then((linkResponse) => {
-          if (!linkResponse.ok) throw new Error('Task created, but sprint assignment failed');
-          return fetch(`${API_LIST}/${id}`).then((taskResponse) => {
-            if (!taskResponse.ok) throw new Error('Task created but it could not be reloaded');
-            return taskResponse.json();
-          });
         });
-      })
-      .then((createdTask) => {
-        setItems((prev) => [createdTask, ...prev]);
-        setHighlightedTaskId(createdTask.id);
-        if (createdTask.sprint?.id) {
-          setVisibleSprints((prev) => [...new Set([...prev, createdTask.sprint.id])]);
-          setExpandedSprints((prev) => ({ ...prev, [createdTask.sprint.id]: true }));
-        } else {
-          setExpandedSprints((prev) => ({ ...prev, [BACKLOG_KEY]: true }));
-        }
-        showSuccess(`“${createdTask.title}” added to your ${createdTask.sprint?.name ? 'sprint' : 'backlog'}`);
-        return createdTask;
-      })
-      .catch((err) => showError(err))
-      .finally(() => setInserting(false));
+        
+        if (!linkResponse.ok) throw new Error('Task created, but sprint assignment failed');
+        
+        const taskResponse = await fetch(`${API_LIST}/${id}`, { headers }); // Re-use headers
+        if (!taskResponse.ok) throw new Error('Task created but it could not be reloaded');
+        createdTask = await taskResponse.json();
+      }
+
+      // 4. Update the UI state
+      setItems((prev) => [createdTask, ...prev]);
+      setHighlightedTaskId(createdTask.id);
+      
+      if (createdTask.sprint?.id) {
+        setVisibleSprints((prev) => [...new Set([...prev, createdTask.sprint.id])]);
+        setExpandedSprints((prev) => ({ ...prev, [createdTask.sprint.id]: true }));
+      } else {
+        setExpandedSprints((prev) => ({ ...prev, [BACKLOG_KEY]: true }));
+      }
+      
+      showSuccess(`“${createdTask.title}” added to your ${createdTask.sprint?.name ? 'sprint' : 'backlog'}`);
+      return createdTask;
+
+    } catch (err) {
+      showError(err);
+    } finally {
+      setInserting(false);
+    }
   }
 
   function focusTaskFromCalendar(task) {

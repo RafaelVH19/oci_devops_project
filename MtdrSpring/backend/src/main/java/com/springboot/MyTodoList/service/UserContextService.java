@@ -29,7 +29,7 @@ public class UserContextService {
                 );
 
         // Optional safety checks (recommended)
-        if (!user.isActive()) {
+        if (user.getIsActive() == null || user.getIsActive() != 1) {
             throw new RuntimeException("User is inactive: " + email);
         }
 

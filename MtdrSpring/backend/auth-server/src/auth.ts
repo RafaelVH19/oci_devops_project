@@ -38,5 +38,14 @@ export const auth = betterAuth({
     minPasswordLength: 8,
   },
   disabledPaths: ['/sign-up/email'],
-  plugins: [admin(), jwt()],
+  plugins: [
+    admin(),
+    jwt({
+      jwks: {
+        keyPairConfig: {
+          alg: 'EdDSA',
+        }
+      }
+    })
+  ],
 });
