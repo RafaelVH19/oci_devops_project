@@ -46,6 +46,8 @@ function LoginForm() {
           const profile = await profileRes.json();
           if (profile?.role === 'MANAGER' && (target === '/app' || target === '/login')) {
             target = '/dashboard';
+          } else if (profile?.role === 'DEVELOPER' && (target === '/dashboard' || target === '/login')) {
+            target = '/app';
           }
         }
       } catch {

@@ -8,6 +8,7 @@ public class GenAiChatRequest {
     private String message;
     private List<GenAiChatMessage> history = new ArrayList<>();
     private String userRole;
+    private String userName;
 
     public String getMessage() {
         return message;
@@ -31,5 +32,13 @@ public class GenAiChatRequest {
 
     public void setUserRole(String userRole) {
         this.userRole = userRole;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 }

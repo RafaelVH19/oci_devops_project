@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Markdown from 'react-markdown';
+import { useOracleUser } from '../../hooks/useOracleUser';
 import {
   ArrowLeft,
   ArrowUp,
@@ -15,7 +17,13 @@ import {
   Trash2,
 } from 'lucide-react';
 
-const STORAGE_KEY = 'lumi-assistant-chats-v1';
+const STORAGE_KEY_PREFIX = 'lumi-assistant-chats-v1';
+const LEGACY_STORAGE_KEY = 'lumi-assistant-chats-v1';
+
+function storageKeyFor(email) {
+  const account = (email || '').trim().toLowerCase();
+  return account ? `${STORAGE_KEY_PREFIX}:${account}` : LEGACY_STORAGE_KEY;
+}
 const VIEW_NEW = 'new';
 const VIEW_CHAT = 'chat';
 const VIEW_SEARCH = 'search';
@@ -42,9 +50,9 @@ function buildAssistantMessage(content) {
   return { id: uid('msg'), role: 'assistant', content, createdAt: Date.now() };
 }
 
-function readChats() {
+function readChats(storageKey) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [buildNewChat()];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return [buildNewChat()];
@@ -57,8 +65,8 @@ function readChats() {
   }
 }
 
-function persistChats(chats) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+function persistChats(storageKey, chats) {
+  localStorage.setItem(storageKey, JSON.stringify(chats));
 }
 
 function firstWords(text, size = 28) {
@@ -73,9 +81,12 @@ async function fetchJson(url, options) {
   return response.json();
 }
 
-async function callAssistantApi(message, history) {
+async function callAssistantApi(message, history, userContext) {
   const envUrl = import.meta.env.VITE_GENAI_API_URL;
   const endpoints = [envUrl, '/api/genai/chat'].filter(Boolean);
+  // #region agent log
+  fetch('http://127.0.0.1:7571/ingest/8e0bfefa-8d60-4ef8-8a5f-982f4459e523',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1e70f3'},body:JSON.stringify({sessionId:'1e70f3',hypothesisId:'B',location:'LumiAssistant.jsx:callAssistantApi',message:'client identity sent to lumi',data:{role:userContext?.role??null,userName:userContext?.userName??null,oracleUserId:userContext?.oracleUserId??null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint, {
@@ -84,6 +95,9 @@ async function callAssistantApi(message, history) {
         body: JSON.stringify({
           message,
           history: history.slice(-10).map((item) => ({ role: item.role, content: item.content })),
+          userRole: userContext?.role ?? null,
+          userName: userContext?.userName ?? null,
+          userContext,
         }),
       });
       if (!response.ok) continue;
@@ -119,11 +133,13 @@ function findUsersByNames(users, names) {
     .filter(Boolean);
 }
 
-async function runSmartAction(message) {
+async function runSmartAction(message, userContext) {
   const lower = normalize(message);
+  const isManager = userContext?.role === 'MANAGER';
+  const userId = userContext?.oracleUserId;
 
   if (lower.includes('create team') || lower.includes('crear team') || lower.includes('crear equipo')) {
-    const users = await fetchJson('/users');
+    const users = await fetchJson('/api/users');
     const teams = await fetchJson('/teams');
     const names = extractNames(message);
     const matched = findUsersByNames(users, names);
@@ -250,26 +266,55 @@ async function runSmartAction(message) {
     lower.includes('workload')
   ) {
     const tasks = await fetchJson('/tasks');
-    const openTasks = tasks.filter((task) => task.status !== 'DONE');
+    const scopedTasks = isManager ? tasks : tasks.filter((task) => task.assignedTo === userId);
+    const openTasks = scopedTasks.filter((task) => task.status !== 'DONE');
     const remainingHours = openTasks.reduce(
       (sum, task) => sum + Math.max((task.expectedHours || 0) - (task.hoursDone || 0), 0),
       0
     );
-    const totalExpected = tasks.reduce((sum, task) => sum + (task.expectedHours || 0), 0);
-    const totalDone = tasks.reduce((sum, task) => sum + (task.hoursDone || 0), 0);
+    const totalExpected = scopedTasks.reduce((sum, task) => sum + (task.expectedHours || 0), 0);
+    const totalDone = scopedTasks.reduce((sum, task) => sum + (task.hoursDone || 0), 0);
+    const scope = isManager ? 'Team' : 'Your';
     return {
       handled: true,
-      text: `This week snapshot: ${remainingHours}h remaining, ${totalDone}h done out of ${totalExpected}h planned.`,
+      text: `${scope} workload snapshot: ${remainingHours}h remaining, ${totalDone}h done out of ${totalExpected}h planned.`,
     };
+  }
+
+  const wantsMyTasks =
+    lower.includes('my tasks') ||
+    lower.includes('what tasks') ||
+    lower.includes('what should i do') ||
+    lower.includes('what should i work') ||
+    lower.includes('pending tasks') ||
+    lower.includes('mis tareas') ||
+    lower.includes('qué tareas') ||
+    lower.includes('que tareas') ||
+    lower.includes('qué debo hacer') ||
+    lower.includes('que debo hacer') ||
+    lower.includes('tareas pendientes');
+
+  if (wantsMyTasks) {
+    const tasks = await fetchJson('/tasks');
+    if (isManager) {
+      const openTasks = tasks.filter((task) => task.status !== 'DONE');
+      if (openTasks.length === 0) return { handled: true, text: 'No pending tasks for the project right now.' };
+      const list = openTasks.slice(0, 10).map((t) => `• ${t.title} (${t.status})`).join('\n');
+      return { handled: true, text: `Here are all pending project tasks:\n${list}` };
+    }
+    const myOpen = tasks.filter((task) => task.assignedTo === userId && task.status !== 'DONE');
+    if (myOpen.length === 0) return { handled: true, text: 'You have no pending tasks right now. Great job!' };
+    const list = myOpen.slice(0, 10).map((t) => `• ${t.title} (${t.status})`).join('\n');
+    return { handled: true, text: `Here are your pending tasks:\n${list}` };
   }
 
   return { handled: false, text: '' };
 }
 
-async function replyForMessage(message, history) {
-  const apiResult = await callAssistantApi(message, history);
+async function replyForMessage(message, history, userContext) {
+  const apiResult = await callAssistantApi(message, history, userContext);
   if (apiResult.ok) return apiResult.text;
-  const actionResult = await runSmartAction(message);
+  const actionResult = await runSmartAction(message, userContext);
   if (actionResult.handled) return actionResult.text;
   return 'Tell me what you need in plain language — for example: "Set up a team called Platform Crew with Alex and Jessie."';
 }
@@ -394,8 +439,11 @@ function LumiComposer({ draft, setDraft, loading, onSend }) {
 }
 
 function LumiAssistant() {
-  const [chats, setChats] = useState(readChats);
-  const [selectedChatId, setSelectedChatId] = useState(() => readChats()[0]?.id);
+  const { displayName, email: userEmail, oracleUserId, role, loading: userLoading } = useOracleUser();
+
+  const storageKey = storageKeyFor(userEmail);
+  const [chats, setChats] = useState(() => readChats(storageKey));
+  const [selectedChatId, setSelectedChatId] = useState(() => readChats(storageKey)[0]?.id);
   const [activeView, setActiveView] = useState(VIEW_NEW);
   const [searchTerm, setSearchTerm] = useState('');
   const [draft, setDraft] = useState('');
@@ -403,9 +451,20 @@ function LumiAssistant() {
   const [heroLine] = useState('Hi, how can I help you today?');
   const [chatMenuOpenId, setChatMenuOpenId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [profileName] = useState('Guest');
-  const [profileEmail] = useState('');
-  const [profileAvatar] = useState('');
+
+  // Reload the chat list when the signed-in account resolves/changes.
+  useEffect(() => {
+    if (userLoading) return;
+    const accountChats = readChats(storageKey);
+    setChats(accountChats);
+    setSelectedChatId(accountChats[0]?.id ?? null);
+    setActiveView(VIEW_NEW);
+  }, [storageKey, userLoading]);
+
+  const profileName = displayName;
+  const profileEmail = userEmail || '';
+  const profileAvatar = '';
+  const userContext = { role, oracleUserId, userName: displayName };
 
   useEffect(() => {
     const faviconLink = document.getElementById('favicon');
@@ -455,7 +514,7 @@ function LumiAssistant() {
 
   const updateChats = (next) => {
     setChats(next);
-    persistChats(next);
+    persistChats(storageKey, next);
   };
 
   const createChat = () => {
@@ -499,7 +558,7 @@ function LumiAssistant() {
     setLoading(true);
 
     try {
-      const responseText = await replyForMessage(text, baseChat.messages);
+      const responseText = await replyForMessage(text, baseChat.messages, userContext);
       const assistantMessage = buildAssistantMessage(responseText);
       updateChats(
         nextBeforeReply.map((chat) =>
@@ -825,10 +884,10 @@ function LumiAssistant() {
                           ) : (
                             <div
                               key={message.id}
-                              className="lumi-message-enter max-w-[72%] text-sm leading-relaxed text-[#2A1814]"
+                              className="lumi-message-enter lumi-markdown max-w-[72%] text-sm leading-relaxed text-[#2A1814]"
                               style={{ animationDelay: `${Math.min(index * 26, 220)}ms` }}
                             >
-                              {message.content}
+                              <Markdown>{message.content}</Markdown>
                             </div>
                           )
                         )}

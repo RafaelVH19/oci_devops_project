@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
 import {
@@ -12,7 +12,7 @@ import API_LIST from './API';
 import { DevAppSkeleton } from './components/dashboard/DashboardSkeletons';
 import DevTaskRow from './components/dev/DevTaskRow';
 import DevTaskCalendar from './components/dev/DevTaskCalendar';
-import DevLumiPromoToast from './components/dev/DevLumiPromoToast';
+import DevLumiPill from './components/dev/DevLumiPill';
 import AppToast from './components/ui/AppToast';
 import HeaderAccountActions from './components/ui/HeaderAccountActions';
 import EditTaskModal from './components/dev/EditTaskModal';
@@ -92,10 +92,11 @@ async function getAuthHeaders() {
 }
 
 function App() {
-  const { displayName: oracleDisplayName, oracleUser, oracleUserId, loading: oracleUserLoading } = useOracleUser();
+  const { displayName: oracleDisplayName, oracleUser, oracleUserId, role, loading: oracleUserLoading } = useOracleUser();
   const [isLoading, setLoading] = useState(true);
   const [isInserting, setInserting] = useState(false);
   const [items, setItems] = useState([]);
+  const [users, setUsers] = useState([]);
   const [sprints, setSprints] = useState([]);
   const { toast, showSuccess, showError, dismissToast } = useAppToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,13 +123,43 @@ function App() {
     setInitials(getInitials(userName));
   }, [oracleUser, oracleDisplayName]);
 
-  const myItems = useMemo(
-    () => (isDemoMode || !oracleUserId ? items : items.filter((item) => item.assignedTo === oracleUserId)),
-    [items, oracleUserId]
+  const isManager = !isDemoMode && String(role || '').toUpperCase() === 'MANAGER';
+
+  const usersById = useMemo(
+    () => new Map(users.map((u) => [u.id, u.name || u.email || `User ${u.id}`])),
+    [users]
   );
+
+  const assigneeOptions = useMemo(() => {
+    if (!isManager) return null;
+    const devUsers = users.filter((u) => String(u.role || '').toUpperCase() === 'DEVELOPER');
+    if (devUsers.length === 0) return null;
+    return [
+      { value: '', label: 'Unassigned' },
+      ...devUsers.map((u) => ({ value: String(u.id), label: u.name || u.email || `User ${u.id}` })),
+    ];
+  }, [isManager, users]);
+
+  const myItems = useMemo(() => {
+    if (isManager) return items;
+    return isDemoMode || !oracleUserId ? items : items.filter((item) => item.assignedTo === oracleUserId);
+  }, [items, oracleUserId, isManager]);
 
   const getSprintTasks = (sprintId) => myItems.filter((item) => item.sprint?.id === sprintId);
   const unassignedTasks = useMemo(() => myItems.filter((item) => !item.sprint?.id), [myItems]);
+
+  const itemsById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+
+  // A task with a dependency stays blocked until that dependency is DONE.
+  function getDependency(task) {
+    if (task?.dependsOnId == null) return null;
+    const dependencyTask = itemsById.get(task.dependsOnId);
+    if (!dependencyTask) return null;
+    return {
+      task: dependencyTask,
+      done: String(dependencyTask.status || '').toUpperCase() === 'DONE',
+    };
+  }
 
   const applyTaskFilters = (tasks) => {
     const token = searchTerm.trim().toLowerCase();
@@ -162,6 +193,17 @@ function App() {
     updateTask(task, { status })
       .then((updated) => handleTaskSaved(updated, `Status updated to ${formatStatusLabel(status)}`))
       .catch((err) => showError(err));
+  }
+
+  function handleAdvance(task) {
+    const dependency = getDependency(task);
+    if (dependency && !dependency.done) {
+      showError(
+        new Error(`"${task.title}" is blocked by "${dependency.task.title}" — finish that task first.`)
+      );
+      return;
+    }
+    handleStatusChange(task, nextStatus(task.status));
   }
 
   function deleteItem(deleteId) {
@@ -211,13 +253,15 @@ function App() {
                   formatStatusLabel={formatStatusLabel}
                   priorityPillClass={priorityPillClass}
                   pendingDeleteId={pendingDeleteId}
-                  onAdvance={(t) => handleStatusChange(t, nextStatus(t.status))}
+                  onAdvance={handleAdvance}
                   onReopen={(t) => handleStatusChange(t, 'PENDING')}
                   onEdit={setEditingTask}
                   onDeleteRequest={setPendingDeleteId}
                   onConfirmDelete={deleteItem}
                   onCancelDelete={() => setPendingDeleteId(null)}
                   animationDelay={Math.min(idx * 20, 180)}
+                  assigneeName={isManager ? usersById.get(item.assignedTo) : undefined}
+                  dependency={getDependency(item)}
                 />
               ))
             )}
@@ -248,6 +292,7 @@ function App() {
                   onConfirmDelete={deleteItem}
                   onCancelDelete={() => setPendingDeleteId(null)}
                   animationDelay={Math.min(idx * 20, 180)}
+                  assigneeName={isManager ? usersById.get(item.assignedTo) : undefined}
                 />
               ))
             )}
@@ -259,33 +304,27 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
-    console.log("DEBUG: useEffect triggered - Starting data load...");
     (async () => {
       try {
-        const headers = await getAuthHeaders();
-        console.log("DEBUG: Headers generated:", headers);
-        console.log("DEBUG: About to fetch tasks from:", API_LIST);
-
-        const [tasksResponse, sprintsResponse] = await Promise.all([
-          fetch(API_LIST, { headers }),
-          fetch('/sprints', { headers }),
+        const [tasksResponse, sprintsResponse, usersResponse] = await Promise.all([
+          fetch(API_LIST),
+          fetch('/sprints'),
+          fetch('/api/users'),
         ]);
-
-        console.log("DEBUG: Fetches completed");
 
         if (!tasksResponse.ok) throw new Error('Could not load tasks');
 
         const tasks = await tasksResponse.json();
         const sprintResult = sprintsResponse.ok ? await sprintsResponse.json() : [];
+        const userResult = usersResponse.ok ? await usersResponse.json() : [];
 
         if (cancelled) return;
         setItems(tasks);
         setSprints(sprintResult);
+        setUsers(userResult);
 
         if (isDemoMode) {
-          const usersResponse = await fetch('/api/users');
-          const users = usersResponse.ok ? await usersResponse.json() : [];
-          const userName = users?.[0]?.name || users?.[0]?.username || 'Alex';
+          const userName = userResult?.[0]?.name || userResult?.[0]?.username || 'Alex';
           setDisplayName(userName);
           setFirstName(userName.split(/\s+/)[0] || 'Alex');
           setInitials(getInitials(userName));
@@ -316,6 +355,32 @@ function App() {
     };
   }, []);
 
+  const refreshWorkspace = useCallback(async () => {
+    const cacheBust = Date.now();
+    try {
+      const [tasksResponse, sprintsResponse, usersResponse] = await Promise.all([
+        fetch(`${API_LIST}?_=${cacheBust}`, { cache: 'no-store' }),
+        fetch(`/sprints?_${cacheBust}`, { cache: 'no-store' }),
+        fetch(`/api/users?_${cacheBust}`, { cache: 'no-store' }),
+      ]);
+      if (tasksResponse.ok) setItems(await tasksResponse.json());
+      if (sprintsResponse.ok) {
+        const sprintResult = await sprintsResponse.json();
+        setSprints(sprintResult);
+        setCurrentSprint((prev) => prev ?? determineCurrentSprint(sprintResult));
+      }
+      if (usersResponse.ok) setUsers(await usersResponse.json());
+    } catch {
+      // keep current data if the refresh fails
+    }
+  }, []);
+
+  // Silent refresh when Lumi changes tasks/sprints in the workspace.
+  useEffect(() => {
+    window.addEventListener('lumen:workspace-changed', refreshWorkspace);
+    return () => window.removeEventListener('lumen:workspace-changed', refreshWorkspace);
+  }, [refreshWorkspace]);
+
   useEffect(() => {
     document.documentElement.classList.add('dev-app-active');
     return () => document.documentElement.classList.remove('dev-app-active');
@@ -329,7 +394,6 @@ function App() {
 
   async function addItem(taskData) {
     setInserting(true);
-    
     try {
       const data = {
         title: taskData.title,
@@ -338,12 +402,12 @@ function App() {
         expectedHours: taskData.expectedHours,
         hoursDone: 0,
         isBug: taskData.isBug,
-        assignedTo: oracleUserId || 1,
+        assignedTo: taskData.assignedTo || oracleUserId || 1,
         createdBy: oracleUserId || 1,
+        dependsOnId: taskData.dependsOnId || null,
         vector: 'web',
       };
 
-      // 1. Grab headers once at the start
       const headers = await getAuthHeaders();
 
       // 2. Create the initial task
@@ -476,7 +540,13 @@ function App() {
           </header>
 
           <div className="dashboard-section-enter" style={{ animationDelay: '100ms' }}>
-            <NewItem addItem={addItem} isInserting={isInserting} sprints={sprints} />
+            <NewItem
+              addItem={addItem}
+              isInserting={isInserting}
+              sprints={sprints}
+              assigneeOptions={assigneeOptions}
+              tasks={items}
+            />
           </div>
 
           {isLoading || oracleUserLoading ? (
@@ -724,8 +794,10 @@ function App() {
         onClose={() => setEditingTask(null)}
         onSaved={(updated) => handleTaskSaved(updated, 'Task updated')}
         onError={showError}
+        assigneeOptions={assigneeOptions}
+        tasks={items}
       />
-      <DevLumiPromoToast />
+      <DevLumiPill onWorkspaceChanged={refreshWorkspace} />
       <AppToast toast={toast} onDismiss={dismissToast} />
     </section>
   );

@@ -149,34 +149,212 @@ public class BotActions{
     }
 
     /**
-     * Handles the /register command.
+     * Pending registrations waiting for the user's password,
+     * keyed by chat ID. BotActions is created per message, so
+     * this state must be shared across instances.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<Long, PendingRegistration> PENDING_REGISTRATIONS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final long PENDING_REGISTRATION_TTL_MS = 5 * 60 * 1000;
+
+    private static final class PendingRegistration {
+        final String email;
+        final long createdAt;
+
+        PendingRegistration(String email) {
+            this.email = email;
+            this.createdAt = System.currentTimeMillis();
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() - createdAt > PENDING_REGISTRATION_TTL_MS;
+        }
+    }
+
+    /** Clears pending registrations (used by tests). */
+    static void clearPendingRegistrations() {
+        PENDING_REGISTRATIONS.clear();
+    }
+
+    /**
+     * Handles the /register command (step 1 of 2).
      *
-     * Registers the user if their Telegram ID is found
-     * in the system, otherwise sends an error message.
+     * "/register" alone greets the user when their Telegram is already linked.
+     * "/register email@dominio.com" validates the email and then asks for the
+     * account password; the link happens in fnPasswordReply once it matches.
      */
     public void fnRegister() {
         if (!requestText.startsWith(BotCommands.REGISTER_COMMAND.getCommand()) || exit) return;
 
-        List<User> users = userService.findAll();
+        String[] parts = requestText.trim().split("\\s+", 2);
+        String emailArg = parts.length > 1 ? parts[1].trim() : null;
 
-        for (User u : users) {
-            if (u.getTelegramId() != null &&
-                u.getTelegramId().equals(String.valueOf(telegramUserId))) {
-
-                String nombre =(u.getName() != null) ? u.getName() : "usuario";
-
+        if (emailArg == null || emailArg.isEmpty()) {
+            User linked = findUserByTelegramId(String.valueOf(telegramUserId));
+            if (linked != null) {
+                String nombre = (linked.getName() != null) ? linked.getName() : "usuario";
                 BotHelper.sendMessageToTelegram(chatId,
                         BotMessages.USER_OK.getMessage() + " " + nombre + "!",
                         telegramClient);
+            } else {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_USAGE.getMessage(),
+                        telegramClient);
+            }
+            exit = true;
+            return;
+        }
 
+        try {
+            User byEmail = userService.findByEmail(emailArg).orElse(null);
+            if (byEmail == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_EMAIL_NOT_FOUND.getMessage(),
+                        telegramClient);
                 exit = true;
                 return;
             }
+
+            String tgId = String.valueOf(telegramUserId);
+
+            if (tgId.equals(byEmail.getTelegramId())) {
+                String nombre = (byEmail.getName() != null) ? byEmail.getName() : "usuario";
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.USER_OK.getMessage() + " " + nombre + "!",
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            User alreadyLinked = findUserByTelegramId(tgId);
+            if (alreadyLinked != null && !alreadyLinked.getId().equals(byEmail.getId())) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_TELEGRAM_IN_USE.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            // A numeric TELEGRAM_ID means a real link; invite placeholders (email prefixes) don't count.
+            if (byEmail.getTelegramId() != null
+                    && byEmail.getTelegramId().matches("\\d+")
+                    && !byEmail.getTelegramId().equals(tgId)) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_EMAIL_TAKEN.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            if (byEmail.getPasswordHash() == null || byEmail.getPasswordHash().isBlank()) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_NO_PASSWORD.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            PENDING_REGISTRATIONS.put(chatId, new PendingRegistration(byEmail.getEmail()));
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.REGISTER_ASK_PASSWORD.getMessage(),
+                    telegramClient);
+        } catch (Exception e) {
+            logger.error("Error iniciando registro de Telegram", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.USER_NOT_FOUND.getMessage(),
+                    telegramClient);
         }
 
-        BotHelper.sendMessageToTelegram(chatId,
-                BotMessages.USER_NOT_FOUND.getMessage(),
-                telegramClient);
+        exit = true;
+    }
+
+    /**
+     * Handles the password reply (step 2 of 2 of /register).
+     *
+     * Only consumes plain-text messages when this chat has a pending
+     * registration; verifies the password against the stored BCrypt
+     * hash and links the Telegram account on success.
+     */
+    public void fnPasswordReply() {
+        if (exit || requestText == null || requestText.startsWith("/")) return;
+
+        PendingRegistration pending = PENDING_REGISTRATIONS.get(chatId);
+        if (pending == null) return;
+
+        if (pending.isExpired()) {
+            PENDING_REGISTRATIONS.remove(chatId);
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.REGISTER_EXPIRED.getMessage(),
+                    telegramClient);
+            exit = true;
+            return;
+        }
+
+        try {
+            User user = userService.findByEmail(pending.email).orElse(null);
+            if (user == null) {
+                PENDING_REGISTRATIONS.remove(chatId);
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_EMAIL_NOT_FOUND.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            if (!userService.passwordMatches(user, requestText.trim())) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.REGISTER_WRONG_PASSWORD.getMessage(),
+                        telegramClient);
+                exit = true;
+                return;
+            }
+
+            PENDING_REGISTRATIONS.remove(chatId);
+            userService.updateTelegramId(user.getId(), String.valueOf(telegramUserId));
+
+            String nombre = (user.getName() != null) ? user.getName() : "usuario";
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.REGISTER_LINKED.getMessage() + " " + nombre + "!",
+                    telegramClient);
+        } catch (Exception e) {
+            logger.error("Error vinculando cuenta de Telegram", e);
+            PENDING_REGISTRATIONS.remove(chatId);
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.USER_NOT_FOUND.getMessage(),
+                    telegramClient);
+        }
+
+        exit = true;
+    }
+
+    /**
+     * Handles the /logout command.
+     *
+     * Unlinks this Telegram account from its user, so /register <email>
+     * can be used again (possibly with another account).
+     */
+    public void fnLogout() {
+        if (!requestText.startsWith(BotCommands.LOGOUT_COMMAND.getCommand()) || exit) return;
+
+        try {
+            User user = findUserByTelegramId(String.valueOf(telegramUserId));
+            if (user == null) {
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.LOGOUT_NOT_LINKED.getMessage(),
+                        telegramClient);
+            } else {
+                userService.updateTelegramId(user.getId(), null);
+                BotHelper.sendMessageToTelegram(chatId,
+                        BotMessages.LOGOUT_OK.getMessage(),
+                        telegramClient);
+            }
+        } catch (Exception e) {
+            logger.error("Error cerrando sesión de Telegram", e);
+            BotHelper.sendMessageToTelegram(chatId,
+                    BotMessages.LOGOUT_NOT_LINKED.getMessage(),
+                    telegramClient);
+        }
 
         exit = true;
     }
@@ -471,6 +649,7 @@ public class BotActions{
         List<Task> tasks = taskService.findAll();
         List<Task> assignedTasks = tasks.stream()
                 .filter(t -> user.getId() != null && user.getId().equals(t.getAssignedTo()))
+                .filter(t -> !TaskStatus.DONE.equals(t.getStatus()))
                 .collect(Collectors.toList());
 
         String msg = BotMessages.TASK_LIST_HEADER.getMessage();
@@ -779,7 +958,8 @@ public class BotActions{
         try {
             User currentUser = findUserByTelegramId(String.valueOf(telegramUserId));
             String userRole = currentUser != null ? currentUser.getRole() : null;
-            String response = agentOrchestrator.handleMessage(requestText, userRole);
+            String userName = currentUser != null ? currentUser.getName() : null;
+            String response = agentOrchestrator.handleMessage(requestText, userRole, userName);
             if (response != null && !response.isBlank()) {
                 if (isCommandLike(response)) {
                     if (dispatchDerivedCommand(response.trim())) {
@@ -810,6 +990,7 @@ public class BotActions{
 
         fnStart();
         fnRegister();
+        fnLogout();
         fnAddTask();
         fnDeleteTask();
         fnAssignTask();

@@ -79,6 +79,7 @@ class BotActionsTest {
 
     @BeforeEach
     void setUp() {
+        BotActions.clearPendingRegistrations();
         botActions = new BotActions(
                 telegramClient,
                 taskService,
@@ -115,6 +116,130 @@ class BotActionsTest {
         verify(telegramClient).execute(sendMessageCaptor.capture());
         assertThat(sendMessageCaptor.getValue().getText())
                 .isEqualTo(BotMessages.USER_OK.getMessage() + " DEVELOPER!");
+    }
+
+    @Test
+    void fnRegisterWithEmailAsksForPassword() throws Exception {
+        User developer = pendingInviteUser();
+        when(userService.findByEmail("dev@lumen.app")).thenReturn(java.util.Optional.of(developer));
+        when(userService.findAll()).thenReturn(List.of(developer));
+        botActions.setRequestText("/register dev@lumen.app");
+
+        botActions.fnRegister();
+
+        verify(telegramClient).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getValue().getText())
+                .isEqualTo(BotMessages.REGISTER_ASK_PASSWORD.getMessage());
+    }
+
+    @Test
+    void fnPasswordReplyLinksTelegramOnMatch() throws Exception {
+        User developer = pendingInviteUser();
+        when(userService.findByEmail("dev@lumen.app")).thenReturn(java.util.Optional.of(developer));
+        when(userService.findAll()).thenReturn(List.of(developer));
+        botActions.setRequestText("/register dev@lumen.app");
+        botActions.fnRegister();
+
+        when(userService.passwordMatches(developer, "secret123")).thenReturn(true);
+        BotActions passwordStep = newBotActions("secret123");
+
+        passwordStep.fnPasswordReply();
+
+        verify(userService).updateTelegramId(USER_ID_DEVELOPER, String.valueOf(TELEGRAM_ID_DEVELOPER));
+        verify(telegramClient, org.mockito.Mockito.times(2)).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getAllValues().get(1).getText())
+                .isEqualTo(BotMessages.REGISTER_LINKED.getMessage() + " DEVELOPER!");
+    }
+
+    @Test
+    void fnPasswordReplyRejectsWrongPassword() throws Exception {
+        User developer = pendingInviteUser();
+        when(userService.findByEmail("dev@lumen.app")).thenReturn(java.util.Optional.of(developer));
+        when(userService.findAll()).thenReturn(List.of(developer));
+        botActions.setRequestText("/register dev@lumen.app");
+        botActions.fnRegister();
+
+        when(userService.passwordMatches(developer, "wrongpass")).thenReturn(false);
+        BotActions passwordStep = newBotActions("wrongpass");
+
+        passwordStep.fnPasswordReply();
+
+        verify(userService, org.mockito.Mockito.never()).updateTelegramId(any(), any());
+        verify(telegramClient, org.mockito.Mockito.times(2)).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getAllValues().get(1).getText())
+                .isEqualTo(BotMessages.REGISTER_WRONG_PASSWORD.getMessage());
+    }
+
+    @Test
+    void fnPasswordReplyIgnoresChatsWithoutPendingRegistration() throws Exception {
+        BotActions passwordStep = newBotActions("hola");
+
+        passwordStep.fnPasswordReply();
+
+        verify(telegramClient, org.mockito.Mockito.never()).execute(any(SendMessage.class));
+    }
+
+    @Test
+    void fnRegisterUnknownEmailShowsError() throws Exception {
+        when(userService.findByEmail("ghost@lumen.app")).thenReturn(java.util.Optional.empty());
+        botActions.setRequestText("/register ghost@lumen.app");
+
+        botActions.fnRegister();
+
+        verify(telegramClient).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getValue().getText())
+                .isEqualTo(BotMessages.REGISTER_EMAIL_NOT_FOUND.getMessage());
+    }
+
+    private User pendingInviteUser() {
+        User developer = userWithTelegramId(USER_ID_DEVELOPER, 0L, "DEVELOPER");
+        developer.setTelegramId("dev.placeholder");
+        developer.setEmail("dev@lumen.app");
+        developer.setPasswordHash("$2a$10$hashedpassword");
+        return developer;
+    }
+
+    private BotActions newBotActions(String requestText) {
+        BotActions actions = new BotActions(
+                telegramClient,
+                taskService,
+                sprintService,
+                sprintTaskService,
+                userService,
+                teamService,
+                teamMemberService,
+                deepSeekService,
+                agentOrchestrator);
+        actions.setChatId(CHAT_ID);
+        actions.setTelegramUserId(TELEGRAM_ID_DEVELOPER);
+        actions.setRequestText(requestText);
+        return actions;
+    }
+
+    @Test
+    void fnLogoutUnlinksTelegram() throws Exception {
+        User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
+        when(userService.findAll()).thenReturn(List.of(developer));
+        botActions.setRequestText("/logout");
+
+        botActions.fnLogout();
+
+        verify(userService).updateTelegramId(USER_ID_DEVELOPER, null);
+        verify(telegramClient).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getValue().getText())
+                .isEqualTo(BotMessages.LOGOUT_OK.getMessage());
+    }
+
+    @Test
+    void fnLogoutWithoutLinkShowsHint() throws Exception {
+        when(userService.findAll()).thenReturn(List.of());
+        botActions.setRequestText("/logout");
+
+        botActions.fnLogout();
+
+        verify(telegramClient).execute(sendMessageCaptor.capture());
+        assertThat(sendMessageCaptor.getValue().getText())
+                .isEqualTo(BotMessages.LOGOUT_NOT_LINKED.getMessage());
     }
 
     @Test
@@ -300,7 +425,7 @@ class BotActionsTest {
         User developer = userWithTelegramId(USER_ID_DEVELOPER, TELEGRAM_ID_DEVELOPER, "DEVELOPER");
         developer.setRole("DEVELOPER");
         when(userService.findAll()).thenReturn(List.of(developer));
-        when(agentOrchestrator.handleMessage(any(String.class), any(String.class))).thenReturn("Hola DEVELOPER");
+        when(agentOrchestrator.handleMessage(any(), any(), any())).thenReturn("Hola DEVELOPER");
         botActions.setRequestText("hola bot");
 
         botActions.fnElse();
@@ -311,7 +436,7 @@ class BotActionsTest {
 
     @Test
     void fnElseHandlesAgentFailure() throws Exception {
-        when(agentOrchestrator.handleMessage(any(String.class), any(String.class)))
+        when(agentOrchestrator.handleMessage(any(), any(), any()))
                 .thenThrow(new RuntimeException("boom"));
         botActions.setRequestText("hola bot");
 

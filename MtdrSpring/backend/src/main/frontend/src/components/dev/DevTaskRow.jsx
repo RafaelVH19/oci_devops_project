@@ -1,5 +1,5 @@
 import moment from 'moment';
-import { Bug, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { Bug, CheckCircle2, Link2, Lock, Pencil, Trash2 } from 'lucide-react';
 
 export default function DevTaskRow({
   item,
@@ -15,12 +15,15 @@ export default function DevTaskRow({
   onConfirmDelete,
   onCancelDelete,
   animationDelay = 0,
+  assigneeName,
+  dependency,
 }) {
   const isConfirming = pendingDeleteId === item.id;
   const status = String(item.status || '').toUpperCase();
   const advanceLabel =
     status === 'PENDING' ? 'Start' : status === 'IN_PROGRESS' ? 'Finish' : 'Advance';
   const isFinishAction = status === 'IN_PROGRESS';
+  const isBlocked = Boolean(dependency && !dependency.done);
 
   if (isCompleted) {
     return (
@@ -36,6 +39,11 @@ export default function DevTaskRow({
           <p className="truncate text-sm text-[#6B6560] line-through">{item.title}</p>
           <p className="mt-1 text-xs text-[#6B6560]">
             Completed {item.updatedAt ? moment(item.updatedAt).fromNow() : 'recently'}
+            {assigneeName && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#2A1814]/[0.06] px-2 py-0.5 font-medium text-[#2A1814]">
+                {assigneeName}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -83,6 +91,26 @@ export default function DevTaskRow({
             {item.priority || 'N/A'}
           </span>
           <span className="text-[#6B6560]">Estimate: {item.expectedHours || 0}h</span>
+          {dependency && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
+                isBlocked ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'
+              }`}
+              title={
+                isBlocked
+                  ? `Blocked until "${dependency.task.title}" is done`
+                  : `Dependency "${dependency.task.title}" is done`
+              }
+            >
+              {isBlocked ? <Lock className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+              {isBlocked ? `Waiting on: ${dependency.task.title}` : `After: ${dependency.task.title}`}
+            </span>
+          )}
+          {assigneeName && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#2A1814]/[0.06] px-2 py-0.5 font-medium text-[#2A1814]">
+              {assigneeName}
+            </span>
+          )}
         </div>
       </div>
 
@@ -110,14 +138,17 @@ export default function DevTaskRow({
             <button
               type="button"
               onClick={() => onAdvance(item)}
+              title={isBlocked ? `Blocked by "${dependency.task.title}"` : undefined}
               className={
-                isFinishAction
-                  ? 'inline-flex items-center gap-1 rounded-full bg-[#2A1814] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#1d110e]'
-                  : 'rounded-full border border-[#2A1814]/15 px-3 py-1.5 text-xs font-medium text-[#2A1814] transition hover:bg-[#faf9f6]'
+                isBlocked
+                  ? 'inline-flex items-center gap-1 rounded-full border border-[#2A1814]/10 px-3 py-1.5 text-xs font-medium text-[#6B6560] opacity-60 transition hover:bg-[#faf9f6]'
+                  : isFinishAction
+                    ? 'inline-flex items-center gap-1 rounded-full bg-[#2A1814] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#1d110e]'
+                    : 'rounded-full border border-[#2A1814]/15 px-3 py-1.5 text-xs font-medium text-[#2A1814] transition hover:bg-[#faf9f6]'
               }
             >
-              {isFinishAction && <CheckCircle2 className="h-3.5 w-3.5" />}
-              {advanceLabel}
+              {isBlocked ? <Lock className="h-3.5 w-3.5" /> : isFinishAction && <CheckCircle2 className="h-3.5 w-3.5" />}
+              {isBlocked ? 'Blocked' : advanceLabel}
             </button>
           )}
           <button
